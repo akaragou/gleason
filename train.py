@@ -20,7 +20,7 @@ def main():
     print(FLAGS.config)
     config = Config(FLAGS.config)
 
-    datareader = records.Reader(FLAGS.data_dir)
+    datareader = records.Reader(FLAGS.data_dir, crop_size=config['train']['crop_size'])
     tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
             FLAGS.tpu,
             zone=FLAGS.tpu_zone,
@@ -49,6 +49,7 @@ def main():
             'alpha': config['train']['alpha'],
             'gamma': config['train']['gamma'],
             'epsilon': 1e-8,
+            'crop_size': config['train']['crop_size']
     }
     estimator = tf.contrib.tpu.TPUEstimator(
             model_fn=model.model_fn,

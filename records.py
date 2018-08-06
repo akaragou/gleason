@@ -33,13 +33,16 @@ class Reader():
         mask = tf.reshape(mask, self.img_dims[:2])
 
         image = tf.image.rgb_to_grayscale(image)
-        image = tf.random_crop(image, [384, 384])
 
         image = tf.to_float(image)
         mask = tf.to_float(mask)
 
         mask = tf.expand_dims(mask,-1) 
         image_mask = tf.concat([image, mask], axis=-1)
+        image_mask = tf.random_crop(image_mask, [384, 384, 2])
+
+        image = tf.expand_dims(image_mask[:,:,0], -1)
+        mask = tf.expand_dims(image_mask[:,:,1], -1)
 
         if 'rand_flip_left_right' in self.augmentations:
             image_mask = tf.image.random_flip_left_right(image_mask)
@@ -102,20 +105,10 @@ class Reader():
 
         return image, mask
 
-    def set_shapes(self, batch_size, volume, label):
-        '''Statically set the size of each component.'''
-        print(volume.shape)
-        volume.set_shape(volume.get_shape().merge_with(
-            tf.TensorShape([batch_size])))
-        print(volume.shape)
-        label.set_shape(label.get_shape().merge_with(
-            tf.TensorShape([batch_size])))
-
     def input_fn(self, params):
         """input function provides a single batch for train or eval."""
         batch_size = params['batch_size']
         is_training = params['train']
-        print(batch_size)
 
         file_pattern = os.path.join(
                 self.data_dir, 'train-*' if is_training else 'validation-*')
@@ -140,9 +133,6 @@ class Reader():
                     self.dataset_parser, batch_size=batch_size,
                     num_parallel_batches=8, drop_remainder=True))
         
-        # XXX: static batch size?
-        # dataset = dataset.map(functools.partial(self.set_shapes, batch_size))
-
         dataset = dataset.prefetch(32)
         
         return dataset
