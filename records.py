@@ -7,7 +7,8 @@ import tensorflow as tf
 class Reader():
     """Reader reads from a tfrecord file to produce an image."""
 
-    def __init__(self, data_dir, img_dims=[512,512,3], augmentations={}, shuffle=True):
+    def __init__(self, data_dir, img_dims=[512,512,3], augmentations={},
+            shuffle=True, crop_size=[384,384]):
         """initialize the reader with a tfrecord dir and dims."""
         self.data_dir = data_dir
         self.img_dims = img_dims
@@ -39,7 +40,7 @@ class Reader():
 
         mask = tf.expand_dims(mask,-1) 
         image_mask = tf.concat([image, mask], axis=-1)
-        image_mask = tf.random_crop(image_mask, [384, 384, 2])
+        image_mask = tf.random_crop(image_mask, self.crop_size, [2])
 
         image = tf.expand_dims(image_mask[:,:,0], -1)
         mask = tf.expand_dims(image_mask[:,:,1], -1)
