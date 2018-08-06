@@ -14,6 +14,7 @@ class Reader():
         self.img_dims = img_dims
         self.augmentations = augmentations
         self.shuffle = True
+        self.crop_size = crop_size
 
     def dataset_parser(self, value):
         """parse the tfrecords."""
@@ -40,7 +41,7 @@ class Reader():
 
         mask = tf.expand_dims(mask,-1) 
         image_mask = tf.concat([image, mask], axis=-1)
-        image_mask = tf.random_crop(image_mask, self.crop_size, [2])
+        image_mask = tf.random_crop(image_mask, self.crop_size + [2])
 
         image = tf.expand_dims(image_mask[:,:,0], -1)
         mask = tf.expand_dims(image_mask[:,:,1], -1)
