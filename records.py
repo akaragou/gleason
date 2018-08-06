@@ -32,26 +32,29 @@ class Reader():
         image = tf.reshape(image, self.img_dims)
         mask = tf.reshape(mask, self.img_dims[:2])
 
+        image = tf.image.rgb_to_grayscale(image)
+        image = tf.random_crop(image, [384, 384])
+
         image = tf.to_float(image)
         mask = tf.to_float(mask)
 
         mask = tf.expand_dims(mask,-1) 
         image_mask = tf.concat([image, mask], axis=-1)
 
-        if self.augmentations['rand_flip_left_right']:
+        if 'rand_flip_left_right' in self.augmentations:
             image_mask = tf.image.random_flip_left_right(image_mask)
             image = image_mask[...,:3]
             mask = image_mask[...,3]
             mask = tf.expand_dims(mask,-1)
 
         image_mask = tf.concat([image, mask], axis=-1)
-        if self.augmentations['rand_flip_top_bottom']:     
+        if 'rand_flip_top_bottom' in self.augmentations:
             image_mask = tf.image.random_flip_up_down(image_mask)
             image = image_mask[...,:3]
             mask = image_mask[...,3]
             mask = tf.expand_dims(mask,-1) 
 
-        if self.augmentations['rand_rotate']:
+        if 'rand_rotate' in self.augmentations:
             elems = tf.convert_to_tensor([0, PI/2, PI, (3*PI)/2])
             sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25, 0.25, 0.25]]), 1)) 
             random_angle = elems[tf.cast(sample, tf.int32)]
@@ -59,7 +62,7 @@ class Reader():
             mask = tf.contrib.image.rotate(mask, random_angle)
         
 
-        if self.augmentations['warp']:
+        if 'warp' in self.augmentations:
             X = tf.random_uniform([self.img_dims[0], self.img_dims[1]])*2 - 1
             Y = tf.random_uniform([self.img_dims[0], self.img_dims[1]])*2 - 1
             X = tf.reshape(X, [1, self.img_dims[0],self.img_dims[1], 1])
@@ -94,10 +97,10 @@ class Reader():
             # image = tf.contrib.image.dense_image_warp(image, batch_trans)
             # mask = tf.contrib.image.dense_image_warp(mask, batch_trans)
 
-            image = image/255
-            mask = tf.cast(mask, dtype=tf.int64)
+        image = image/255
+        mask = tf.cast(mask, dtype=tf.int64)
 
-            return image, mask
+        return image, mask
 
     def set_shapes(self, batch_size, volume, label):
         '''Statically set the size of each component.'''

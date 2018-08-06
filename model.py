@@ -21,8 +21,8 @@ def model_fn(features, labels, mode, params):
     # check params
     use_tpu = params['use_tpu']
     num_classes = params['num_classes']
-    loss_name = params['loss']
-    optimizer_name = params['optimizer']
+    loss_name = params['loss_name']
+    optimizer_name = params['optimizer_name']
     
     # build model
     train_logits = models.model[params['model_name']](features)

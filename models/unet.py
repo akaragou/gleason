@@ -121,7 +121,7 @@ def build_model(inputs, is_training=True, num_classes=5, scope='unet'):
             # Convert end_points_collection into a end_point dict.
             end_points = slim.utils.convert_collection_to_dict(end_points_collection)
            
-            return output_map, end_points
+            return output_map
 
 
 ##############################################
@@ -212,7 +212,7 @@ def ResidualUnet(inputs,
             # Convert end_points_collection into a end_point dict.
             end_points = slim.utils.convert_collection_to_dict(end_points_collection)
 
-            return output_map, end_points
+            return output_map
 
 
 

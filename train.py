@@ -17,6 +17,7 @@ def main():
 
     # get the configuration for the current run.
     FLAGS = flags.get()
+    print(FLAGS.config)
     config = Config(FLAGS.config)
 
     datareader = records.Reader(FLAGS.data_dir)
@@ -41,6 +42,10 @@ def main():
             'use_tpu': FLAGS.use_tpu,
             'model_name': config['model']['name'],
             'num_classes': config['model']['num_classes'],
+            'loss_name': config['train']['loss'],
+            'lr': config['train']['lr'],
+            'lr_momentum': config['train']['lr_momentum'],
+            'optimizer_name': config['train']['optimizer'],
             'alpha': config['train']['alpha'],
             'gamma': config['train']['gamma'],
             'epsilon': 1e-8,
