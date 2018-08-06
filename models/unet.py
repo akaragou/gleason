@@ -1,4 +1,3 @@
-from __future__ import division 
 import tensorflow as tf 
 slim = tf.contrib.slim 
 
@@ -56,12 +55,8 @@ def unet_arg_scope(weight_decay=0.0005):
 # Unet: https://arxiv.org/abs/1505.04597 #
 ##########################################
 
-def Unet(inputs,
-         is_training=True,
-         num_classes = 5,
-         scope='unet'):
-
-
+def build_model(inputs, is_training=True, num_classes=5, scope='unet'):
+    """Build Unet."""
     with tf.variable_scope(scope, 'unet', [inputs]) as sc:
         end_points_collection = sc.name + '_end_points'
         # Collect outputs for conv2d, and max_pool2d.

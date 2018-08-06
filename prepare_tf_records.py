@@ -8,7 +8,6 @@ from tf_record import create_tf_record
 from tqdm import tqdm
 
 def match(filepaths):
-
     slides = []
     masks = []
 
@@ -38,7 +37,6 @@ def match(filepaths):
     return matched
 
 def build_tfrecords(main_data_dir):
-
     tf_record_file_path = os.path.join(main_data_dir, 'tfrecords')
 
     train_file_paths = glob.glob(os.path.join(main_data_dir, 'train2') + '/*.npy')
@@ -46,16 +44,15 @@ def build_tfrecords(main_data_dir):
     test_file_paths =  glob.glob(os.path.join(main_data_dir, 'test2') + '/*.npy')
 
     train_slides_masks = match(train_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'train2.tfrecords'), train_slides_masks, model_img_dims=[512,512], is_img_resize = False)
+    create_tf_record(tf_record_file_path, 'train', train_slides_masks, model_img_dims=[512,512], is_img_resize = False)
 
     val_slides_masks = match(val_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'val2.tfrecords'), val_slides_masks, model_img_dims=[512,512], is_img_resize = False)
+    create_tf_record(tf_record_file_path, 'val', val_slides_masks, model_img_dims=[512,512], is_img_resize = False)
 
     test_slides_masks = match(test_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'test2.tfrecords'), test_slides_masks, model_img_dims=[512,512], is_img_resize = False)
+    create_tf_record(tf_record_file_path, 'test', test_slides_masks, model_img_dims=[512,512], is_img_resize = False)
     
 if __name__ == '__main__':
-
     main_data_dir = '/media/data_cifs/andreas/pathology/gleason_training'
     build_tfrecords(main_data_dir)
     

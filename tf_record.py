@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 import os
+from os import path
 import glob
 import numpy as np
 import tensorflow as tf
@@ -40,38 +41,31 @@ def draw_grid(im, grid_size):
        
     return im
 
-def create_tf_record(tfrecords_filename, images_masks, model_img_dims=[512,512], is_img_resize = False):
+def create_tf_record(tfrecords_dirname, data_type, images_masks, model_img_dims=[512,512], is_img_resize = False):
 
-    writer = tf.python_io.TFRecordWriter(tfrecords_filename)
-    for i in tqdm(range(len(images_masks))):
-
-        image = np.load(images_masks[i][0])
-        mask = np.load(images_masks[i][1])
-
-        image = draw_grid(image, 50)
-
-        if is_img_resize:              
-            image = misc.imresize(image, (256, 256))
-            mask = misc.imresize(mask, (256, 256))
-
-        img_raw = image.tostring()
-        m_raw = mask.tostring()
-
-        example = tf.train.Example(features=tf.train.Features(feature={
-    
-                'image_raw': _bytes_feature(img_raw),
-                'mask_raw':_bytes_feature(m_raw),
-
-               }))
-
-        writer.write(example.SerializeToString())
-
-    writer.close()
-
-
-    print '-' * 90
-    print 'Generated tfrecord at %s' % tfrecords_filename
-    print '-' * 90
+    records_per_file = 100
+    record_count = 0
+    example_iterator = tqdm(range(len(images_masks)))
+    while True:
+        try:
+            tfrecords_filename = path.join(tfrecords_dirname, '%s-%d' % (data_type, record_count))
+            with tf.python_io.TFRecordWriter(tfrecords_filename) as writer:
+                for i in range(records_per_file):
+                    i = next(example_iterator)
+                    image = np.load(images_masks[i][0])
+                    mask = np.load(images_masks[i][1])
+                    image = draw_grid(image, 50)
+                    if is_img_resize:              
+                        image = misc.imresize(image, (256, 256))
+                    img_raw = image.tostring()
+                    m_raw = mask.tostring()
+                    example = tf.train.Example(features=tf.train.Features(feature={
+                            'image_raw': _bytes_feature(img_raw),
+                            'mask_raw':_bytes_feature(m_raw),
+                           }))
+                    writer.write(example.SerializeToString())
+        except StopIteration as e:
+            break
 
 
 def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,\
