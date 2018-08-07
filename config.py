@@ -23,36 +23,47 @@ class GleasonConfig():
         # self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_focal_loss_2018_08_01_14_10_19_239400.ckpt') 
         self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_sigmoid_cross_entropy_2018_08_03_07_24_34_1900.ckpt') 
         
-        self.optimizer = "adam"
-        self.initial_learning_rate = 3e-04
+        self.optimizer = "nestrov"
         self.momentum = 0.9 # if optimizer is nestrov
+
+        self.initial_learning_rate = 0.05
+        self.decay_learning_rate = True
+        self.decay_steps = 5000 # number of steps before decaying the learning rate
+        self.learning_rate_decay_factor = 0.5 
+        
         self.train_batch_size = 2
         self.val_batch_size = 2
-        self.num_batches_to_validate_over = 50 # number of batches to validate over 32*100 = 3200
+
+        self.num_batches_to_validate_over = 10 # number of batches to validate over 32*100 = 3200
         self.validate_every_num_steps = 100 # perform a validation step
+
         self.num_train_epochs = 10000
         self.output_shape = 5 # output shape of the model if 2 we have binary classification 
         self.input_image_size = [512, 512, 3] # size of the input tf record image
-        self.batch_norm = True # needs to be applied to both training and validation graph 
-
+        
         self.train_augmentations_dic = {
                                         'rand_flip_left_right':True,
                                         'rand_flip_top_bottom':True,
                                         'rand_rotate':True,
-                                        'warp':True
+                                        'warp':True,
+                                        'color_distor':True,
+                                        'grayscale':True
                                        }
 
         self.val_augmentations_dic = {
                                       'rand_flip_left_right':False,
                                       'rand_flip_top_bottom':False,
                                       'rand_rotate':False,
-                                      'warp':False
+                                      'warp':False,
+                                      'color_distor':False,
+                                      'color_distor':False,
+                                      'grayscale':True
                                      }
 
-    def rccn_loss():
+    def weighted_sigmoid_with_logits():
+        # tf.nn.sigmoid_cross_entropy_with_logits
         pass
-    def dice_loss():
-        pass 
+
     def weighted_cross_entropy():
         pass
 
@@ -71,17 +82,63 @@ class GleasonConfig():
                                          name=name, axis=1)
             return losses
 
+    def dice_loss():
+        pass 
 
-    def IOU(self, y_true, y_pred, num_classes = 5):
+    def pixel_accuracy(self, y_true, y_pred, num_clas = 5):
 
         flatten_pred = tf.reshape(y_pred, [-1])
         flatten_true = tf.reshape(y_true, [-1])
 
         con = tf.concat([flatten_true, flatten_pred], axis=-1) 
-        uni = tf.unique(con)
-        uni_size =tf.cast(tf.size(uni[0]), dtype=tf.float32)
+        uni_size = tf.cast(tf.size(tf.unique(con)[0]), dtype=tf.float32)
 
-        c =  tf.cast(tf.confusion_matrix(flatten_true, flatten_pred, num_classes = 5), dtype=tf.float32)
+        c = tf.cast(tf.confusion_matrix(flatten_true, flatten_pred, num_classes=num_clas), dtype=tf.float32)
+        intersection = tf.diag_part(c)
+
+        total_pixels = tf.cast(tf.shape(flatten_true)[0], dtype=tf.float32)
+        numerator =  tf.reduce_sum(intersection)
+        pixel_acc = numerator / total_pixels
+
+        return pixel_acc
+
+    def mean_accuracy(self, y_true, y_pred, num_clas = 5):
+
+        flatten_pred = tf.reshape(y_pred, [-1])
+        flatten_true = tf.reshape(y_true, [-1])
+
+        con = tf.concat([flatten_true, flatten_pred], axis=-1) 
+        uni_size = tf.cast(tf.size(tf.unique(con)[0]), dtype=tf.float32)
+
+        c = tf.cast(tf.confusion_matrix(flatten_true, flatten_pred, num_classes=num_clas), dtype=tf.float32)
+        intersection = tf.diag_part(c)
+
+        keys = tf.range(num_clas)
+        sorted_inter = tf.gather(intersection, tf.nn.top_k(keys, k=num_clas).indices)
+
+        mask = tf.concat([tf.cast(flatten_true, dtype=tf.int32), keys], axis=-1)
+        mask_classes, _, mask_class_weights = tf.unique_with_counts(mask)
+        reordered_mask_class_weights = tf.gather(mask_class_weights, tf.nn.top_k(mask_classes, k=num_clas).indices)
+        bool_mask = tf.not_equal(reordered_mask_class_weights, [1])
+
+        classes, _, class_weights = tf.unique_with_counts(flatten_true)
+        true_class_size = tf.cast(tf.size(tf.unique(flatten_true)[0]), dtype=tf.int32)
+        denominator = tf.cast(tf.gather(class_weights, tf.nn.top_k(classes, k=true_class_size).indices), dtype=tf.float32)  
+
+        numerator = tf.boolean_mask(sorted_inter, bool_mask)
+        mean_acc = (1/uni_size) * tf.reduce_sum((numerator / denominator))
+
+        return mean_acc
+
+    def mean_IOU(self, y_true, y_pred, num_clas = 5):
+
+        flatten_pred = tf.reshape(y_pred, [-1])
+        flatten_true = tf.reshape(y_true, [-1])
+
+        con = tf.concat([flatten_true, flatten_pred], axis=-1) 
+        uni_size = tf.cast(tf.size(tf.unique(con)[0]), dtype=tf.float32)
+
+        c = tf.cast(tf.confusion_matrix(flatten_true, flatten_pred, num_classes=num_clas), dtype=tf.float32)
         intersection = tf.diag_part(c)
         ground_truth_set = tf.reduce_sum(c, axis=0)
         predicted_set = tf.reduce_sum(c, axis=1)
@@ -89,8 +146,46 @@ class GleasonConfig():
         union = ground_truth_set + predicted_set - intersection
         iou = intersection / (union + 1e-8)
         mean_iou = tf.reduce_sum(iou) / uni_size
+        
+        return mean_iou 
 
-        return mean_iou
+    def freq_weight_IOU(self, y_true, y_pred, num_clas = 5):
+
+        flatten_pred = tf.reshape(y_pred, [-1])
+        flatten_true = tf.reshape(y_true, [-1])
+
+        con = tf.concat([flatten_true, flatten_pred], axis=-1) 
+        uni_size = tf.cast(tf.size(tf.unique(con)[0]), dtype=tf.float32)
+
+        c = tf.cast(tf.confusion_matrix(flatten_true, flatten_pred, num_classes=num_clas), dtype=tf.float32)
+        intersection = tf.diag_part(c)
+        ground_truth_set = tf.reduce_sum(c, axis=0)
+        predicted_set = tf.reduce_sum(c, axis=1)
+
+        union = ground_truth_set + predicted_set - intersection
+
+        keys = tf.range(num_clas)
+        sorted_inter = tf.gather(intersection, tf.nn.top_k(keys, k=num_clas).indices)
+        sorted_union = tf.gather(union, tf.nn.top_k(keys, k=num_clas).indices)
+
+        mask = tf.concat([tf.cast(flatten_true, dtype=tf.int32), keys], axis=-1)
+        mask_classes, _, mask_class_weights = tf.unique_with_counts(mask)
+        reordered_mask_class_weights = tf.gather(mask_class_weights, tf.nn.top_k(mask_classes, k=num_clas).indices)
+        bool_mask = tf.not_equal(reordered_mask_class_weights, [1])
+
+        classes, _, class_weights = tf.unique_with_counts(flatten_true)
+        true_class_size = tf.cast(tf.size(tf.unique(flatten_true)[0]), dtype=tf.int32)
+        reordered_class_weights = tf.cast(tf.gather(class_weights, tf.nn.top_k(classes, k=true_class_size).indices), dtype=tf.float32)  
+   
+        total_pixels = tf.cast(tf.shape(flatten_true)[0], dtype=tf.float32)
+        non_zero_inter = tf.boolean_mask(sorted_inter, bool_mask)
+        numerator = tf.multiply(reordered_class_weights,non_zero_inter)
+        denominator = tf.boolean_mask(sorted_union, bool_mask)
+     
+        weighted_iou = numerator / denominator
+        freq_weighted_iou =  tf.reduce_sum(weighted_iou) / total_pixels
+        
+        return freq_weighted_iou 
 
     def get_checkpoint_filename(self, model_name, run_name):
         """ 

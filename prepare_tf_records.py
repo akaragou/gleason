@@ -37,6 +37,37 @@ def match(filepaths):
 
     return matched
 
+def calculate_class_weights(mask_filepaths):
+
+    print "Calculating class weights..."
+    class_dic = {}
+
+    for i in tqdm(range(len(mask_filepaths))):
+        mask = np.load(mask_filepaths[i][1])
+        flattened_masks = np.ravel(mask)
+        unique, counts = np.unique(flattened_masks, return_counts=True)
+
+        for u, c in zip(unique, counts):
+
+            if u not in class_dic:
+                class_dic[u] = c
+            else:
+                class_dic[u] += c
+
+    sorted_class_keys = sorted(class_dic)
+    print sorted_class_keys
+    values = [class_dic[k] for k in sorted_class_keys]
+    print values
+    f_i = map(lambda x: sum(values)/x, values)
+    print f_i
+    class_weights = np.array(map(lambda x: x/sum(f_i), f_i), dtype=np.float32)
+    print class_weights
+    # f_i = map(lambda x: len(flattened_masks)/x, 
+    #                         class_dic.values())
+    # class_weights =np.array(map(lambda x: x/sum(f_i), f_i), dtype=np.float32)
+    # np.save('class_weights_Berson.npy', class_weights)
+    print "Done calculating class weights!"
+
 def build_tfrecords(main_data_dir):
 
     tf_record_file_path = os.path.join(main_data_dir, 'tfrecords')
@@ -45,14 +76,20 @@ def build_tfrecords(main_data_dir):
     val_file_paths =  glob.glob(os.path.join(main_data_dir, 'val2') + '/*.npy')
     test_file_paths =  glob.glob(os.path.join(main_data_dir, 'test2') + '/*.npy')
 
+    print "Creating Train tfrecords..."
     train_slides_masks = match(train_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'train2.tfrecords'), train_slides_masks, model_img_dims=[512,512], is_img_resize = False)
+    create_tf_record(os.path.join(tf_record_file_path, 'train2.tfrecords'), train_slides_masks)
 
+    print
+    print "Creating Val tfrecords..."
     val_slides_masks = match(val_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'val2.tfrecords'), val_slides_masks, model_img_dims=[512,512], is_img_resize = False)
+    # calculate_class_weights(val_slides_masks)
+    create_tf_record(os.path.join(tf_record_file_path, 'val2.tfrecords'), val_slides_masks)
 
+    print   
+    print "Creating Test tfrecords..."
     test_slides_masks = match(test_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'test2.tfrecords'), test_slides_masks, model_img_dims=[512,512], is_img_resize = False)
+    create_tf_record(os.path.join(tf_record_file_path, 'test2.tfrecords'), test_slides_masks)
     
 if __name__ == '__main__':
 

@@ -12,6 +12,7 @@ import random
 import math
 from matplotlib import pyplot as plt
 from scipy.ndimage.interpolation import map_coordinates
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from scipy.ndimage.filters import gaussian_filter
 import cv2
 
@@ -40,34 +41,126 @@ def draw_grid(im, grid_size):
        
     return im
 
-def create_tf_record(tfrecords_filename, images_masks, model_img_dims=[512,512], is_img_resize = False):
+def encode(img_filepath, mask_filepath):
+
+  image = np.load(img_filepath)
+  mask = np.load(mask_filepath)
+
+  # image = draw_grid(image, 50)
+
+  img_raw = image.tostring()
+  m_raw = mask.tostring()
+
+  example = tf.train.Example(features=tf.train.Features(feature={
+
+    'image_raw': _bytes_feature(img_raw),
+    'mask_raw':_bytes_feature(m_raw),
+
+  }))
+
+  return example
+
+def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
+  """
+  Source: https://github.com/tensorflow/models/blob/master/research/slim/preprocessing/inception_preprocessing.py
+  Distort the color of a Tensor image.
+  Each color distortion is non-commutative and thus ordering of the color ops
+  matters. Ideally we would randomly permute the ordering of the color ops.
+  Rather then adding that level of complication, we select a distinct ordering
+  of color ops for each preprocessing thread.
+  Args:
+    image: 3-D Tensor containing single image in [0, 1].
+    color_ordering: Python int, a type of distortion (valid values: 0-3).
+    fast_mode: Avoids slower ops (random_hue and random_contrast)
+    scope: Optional scope for name_scope.
+  Returns:
+    3-D Tensor color-distorted image on range [0, 1]
+  Raises:
+    ValueError: if color_ordering not in [0, 3]
+  """
+  with tf.name_scope(scope, 'distort_color', [image]):
+    if fast_mode:
+      if color_ordering == 0:
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+      else:
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+    else:
+      if color_ordering == 0:
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+      elif color_ordering == 1:
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+      elif color_ordering == 2:
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+      elif color_ordering == 3:
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+      else:
+        raise ValueError('color_ordering must be in [0, 3]')
+
+    # The random_* ops do not necessarily clamp.
+    return tf.clip_by_value(image, 0.0, 1.0)
+
+def create_tf_record(tfrecords_filename, images_masks):
 
     writer = tf.python_io.TFRecordWriter(tfrecords_filename)
-    for i in tqdm(range(len(images_masks))):
+    # for i in tqdm(range(len(images_masks))):
 
-        image = np.load(images_masks[i][0])
-        mask = np.load(images_masks[i][1])
+    #     image = np.load(images_masks[i][0])
+    #     mask = np.load(images_masks[i][1])
 
-        image = draw_grid(image, 50)
+    #     image = draw_grid(image, 50)
 
-        if is_img_resize:              
-            image = misc.imresize(image, (256, 256))
-            mask = misc.imresize(mask, (256, 256))
+    #     if is_img_resize:              
+    #         image = misc.imresize(image, (256, 256))
+    #         mask = misc.imresize(mask, (256, 256))
 
-        img_raw = image.tostring()
-        m_raw = mask.tostring()
+    #     img_raw = image.tostring()
+    #     m_raw = mask.tostring()
 
-        example = tf.train.Example(features=tf.train.Features(feature={
+    #     example = tf.train.Example(features=tf.train.Features(feature={
     
-                'image_raw': _bytes_feature(img_raw),
-                'mask_raw':_bytes_feature(m_raw),
+    #             'image_raw': _bytes_feature(img_raw),
+    #             'mask_raw':_bytes_feature(m_raw),
 
-               }))
+    #            }))
 
-        writer.write(example.SerializeToString())
+    #     writer.write(example.SerializeToString())
 
-    writer.close()
+    # writer.close()
 
+    with ProcessPoolExecutor(12) as executor:
+      futures = [executor.submit(encode, i, m) for i, m in images_masks]
+
+      kwargs = {
+          'total': len(futures),
+          'unit': 'it',
+          'unit_scale': True,
+          'leave': True
+      }
+
+      for f in tqdm(as_completed(futures), **kwargs):
+          pass
+      print "Done loading futures!"
+      print "Writing examples..."
+      for i in tqdm(range(len(futures))):
+        try:
+            example = futures[i].result()
+            writer.write(example.SerializeToString())
+        except Exception as e:
+            print "Failed to write example!"
 
     print '-' * 90
     print 'Generated tfrecord at %s' % tfrecords_filename
@@ -99,7 +192,8 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
     image = tf.to_float(image)
     mask = tf.to_float(mask)
 
-    mask = tf.expand_dims(mask,-1) 
+    mask = tf.expand_dims(mask,-1)
+    image = image/255
     image_mask = tf.concat([image, mask], axis=-1)
 
     if augmentations_dic['rand_flip_left_right']:
@@ -116,14 +210,19 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
         mask = tf.expand_dims(mask,-1) 
 
     if augmentations_dic['rand_rotate']:
-        
         elems = tf.convert_to_tensor([0, PI/2, PI, (3*PI)/2])
         sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25, 0.25, 0.25]]), 1)) 
         random_angle = elems[tf.cast(sample, tf.int32)]
         image = tf.contrib.image.rotate(image, random_angle)
         mask = tf.contrib.image.rotate(mask, random_angle)
-    
 
+    if augmentations_dic['color_distor']:
+        elems = tf.convert_to_tensor([0, 1, 2, 3])
+        sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25, 0.25, 0.25]]), 1)) 
+        rand_int = elems[tf.cast(sample, tf.int32)]
+        image = distort_color(image, color_ordering=rand_int)
+
+    
     if shuffle:
         image, mask = tf.train.shuffle_batch([image, mask],
                                            batch_size=size_of_batch,
@@ -138,8 +237,6 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
                                    num_threads=num_of_threads)
     
     if augmentations_dic['warp']:
-
-
         X = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
         Y = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
         X = tf.reshape(X, [1, img_dims[0],img_dims[1], 1])
@@ -174,7 +271,9 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
         image = tf.contrib.image.dense_image_warp(image, batch_trans)
         mask = tf.contrib.image.dense_image_warp(mask, batch_trans)
 
-    image = image/255
-    mask = tf.cast(mask, dtype=tf.int64)
+    if augmentations_dic['grayscale']:
+        image = tf.image.rgb_to_grayscale(image)
+
+    mask = tf.to_int64(mask)
 
     return image, mask
