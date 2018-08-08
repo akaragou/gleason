@@ -13,7 +13,7 @@ from tf_record import read_and_decode
 import resource
 
 
-def train(device, loss_name):
+def train(device, loss_name, binary, grayscale):
 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device) # use nvidia-smi to see available options '0' means first gpu
     config = GleasonConfig() # loads configuration
@@ -49,6 +49,19 @@ def train(device, loss_name):
 
     step = tf.train.get_or_create_global_step()
     step_op = tf.assign(step, step+1)
+
+    if binary:
+        print "Converting to Binary..."
+        train_masks = tf.cond(tf.greater_equal(train_masks, 2), tf.assign(train_masks, 2), train_masks)
+        val_masks = tf.cond(tf.greater_equal(val_masks, 2), tf.assign(val_masks, 2), val_masks)
+
+    if grayscale:
+        print "Converting to Grayscale..."
+        train_augmentations_dic['grayscale'] = True
+        val_augmentations_dic['grayscale'] = True
+    else:
+        train_augmentations_dic['grayscale'] = False
+        val_augmentations_dic['grayscale'] = False
 
     # summaries to use with tensorboard check https://www.tensorflow.org/get_started/summaries_and_tensorboard
 
@@ -240,5 +253,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("device")
     parser.add_argument("loss")
+    parser.add_argument("binary")
+    parser.add_argument("grayscale")
     args = parser.parse_args()
     train(args.device, args.loss) # select gpu to train model on

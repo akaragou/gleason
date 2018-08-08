@@ -23,7 +23,7 @@ class GleasonConfig():
         # self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_focal_loss_2018_08_01_14_10_19_239400.ckpt') 
         self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_sigmoid_cross_entropy_2018_08_03_07_24_34_1900.ckpt') 
         
-        self.optimizer = "nestrov"
+        self.optimizer = "adam"
         self.momentum = 0.9 # if optimizer is nestrov
 
         self.initial_learning_rate = 0.05
@@ -47,7 +47,7 @@ class GleasonConfig():
                                         'rand_rotate':True,
                                         'warp':True,
                                         'color_distor':True,
-                                        'grayscale':True
+                                        'grayscale':False
                                        }
 
         self.val_augmentations_dic = {
@@ -57,7 +57,7 @@ class GleasonConfig():
                                       'warp':False,
                                       'color_distor':False,
                                       'color_distor':False,
-                                      'grayscale':True
+                                      'grayscale':False
                                      }
 
     def weighted_sigmoid_with_logits():
