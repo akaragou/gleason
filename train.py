@@ -256,4 +256,6 @@ if __name__ == '__main__':
     parser.add_argument("binary")
     parser.add_argument("grayscale")
     args = parser.parse_args()
-    train(args.device, args.loss) # select gpu to train model on
+    train(args.device, args.loss, args.binary, args.grayscale) # select gpu to train model on
+
+

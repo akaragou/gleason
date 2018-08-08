@@ -236,40 +236,40 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
                                    allow_smaller_final_batch=True,
                                    num_threads=num_of_threads)
     
-    if augmentations_dic['warp']:
-        X = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
-        Y = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
-        X = tf.reshape(X, [1, img_dims[0],img_dims[1], 1])
-        Y = tf.reshape(Y, [1, img_dims[0],img_dims[1], 1])
+    # if augmentations_dic['warp']:
+    #     X = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
+    #     Y = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
+    #     X = tf.reshape(X, [1, img_dims[0],img_dims[1], 1])
+    #     Y = tf.reshape(Y, [1, img_dims[0],img_dims[1], 1])
 
-        mean = 0.0
-        sigma = 1.0
-        alpha = 20.0
-        ksize = 256
+    #     mean = 0.0
+    #     sigma = 1.0
+    #     alpha = 20.0
+    #     ksize = 256
 
-        x = tf.linspace(-3.0, 3.0, ksize)
-        z = ((1.0 / (sigma * tf.sqrt(2.0 * PI))) * tf.exp(tf.negative(tf.pow(x - mean, 2.0) / (2.0 * tf.pow(sigma, 2.0)))))
-        ksize = z.get_shape().as_list()[0]
-        z_2d = tf.matmul(tf.reshape(z, [ksize, 1]), tf.reshape(z, [1, ksize]))
-        z_4d = tf.reshape(z_2d, [ksize, ksize, 1, 1])
+    #     x = tf.linspace(-3.0, 3.0, ksize)
+    #     z = ((1.0 / (sigma * tf.sqrt(2.0 * PI))) * tf.exp(tf.negative(tf.pow(x - mean, 2.0) / (2.0 * tf.pow(sigma, 2.0)))))
+    #     ksize = z.get_shape().as_list()[0]
+    #     z_2d = tf.matmul(tf.reshape(z, [ksize, 1]), tf.reshape(z, [1, ksize]))
+    #     z_4d = tf.reshape(z_2d, [ksize, ksize, 1, 1])
 
-        X_convolved = tf.nn.conv2d(X, z_4d, strides=[1, 1, 1, 1], padding='SAME')
-        Y_convolved = tf.nn.conv2d(Y, z_4d, strides=[1, 1, 1, 1], padding='SAME')
+    #     X_convolved = tf.nn.conv2d(X, z_4d, strides=[1, 1, 1, 1], padding='SAME')
+    #     Y_convolved = tf.nn.conv2d(Y, z_4d, strides=[1, 1, 1, 1], padding='SAME')
 
-        X_convolved = (X_convolved / tf.reduce_max(X_convolved))*alpha
-        Y_convolved = (Y_convolved / tf.reduce_max(Y_convolved))*alpha
+    #     X_convolved = (X_convolved / tf.reduce_max(X_convolved))*alpha
+    #     Y_convolved = (Y_convolved / tf.reduce_max(Y_convolved))*alpha
 
-        trans = tf.stack([X_convolved,Y_convolved], axis=-1)
-        trans = tf.reshape(trans, [-1])
+    #     trans = tf.stack([X_convolved,Y_convolved], axis=-1)
+    #     trans = tf.reshape(trans, [-1])
 
-        batch_trans = tf.tile(trans, [size_of_batch])
-        batch_trans = tf.reshape(batch_trans, [size_of_batch, img_dims[0], img_dims[1] ,2])
+    #     batch_trans = tf.tile(trans, [size_of_batch])
+    #     batch_trans = tf.reshape(batch_trans, [size_of_batch, img_dims[0], img_dims[1] ,2])
 
-        image = tf.reshape(image, [size_of_batch, img_dims[0], img_dims[1], img_dims[2]])
-        mask = tf.reshape(mask, [size_of_batch, img_dims[0], img_dims[1], 1])
+    #     image = tf.reshape(image, [size_of_batch, img_dims[0], img_dims[1], img_dims[2]])
+    #     mask = tf.reshape(mask, [size_of_batch, img_dims[0], img_dims[1], 1])
 
-        image = tf.contrib.image.dense_image_warp(image, batch_trans)
-        mask = tf.contrib.image.dense_image_warp(mask, batch_trans)
+    #     image = tf.contrib.image.dense_image_warp(image, batch_trans)
+    #     mask = tf.contrib.image.dense_image_warp(mask, batch_trans)
 
     if augmentations_dic['grayscale']:
         image = tf.image.rgb_to_grayscale(image)

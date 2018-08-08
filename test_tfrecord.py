@@ -85,16 +85,11 @@ def test(device):
 
     config = GleasonConfig() # loads configuration
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device) # use nvidia-smi to see available options '0' means first gpu
-    y_true = tf.constant([1, 2, 3, 4,0,3])
-    y_pred = tf.constant([1, 2, 3, 4,0,0])
+    test = tf.constant([1, 2, -1,-1,1])
 
-    mean_iou = config.mean_IOU(y_true, y_pred)
-    freq_weighted_iou = config.freq_weight_IOU(y_true, y_pred)
-
+    threshold = tf.clip_by_value(test, -1, 1)
     with tf.Session() as sess:
-
-        print sess.run(freq_weighted_iou)
-        print sess.run(mean_iou)
+        print sess.run(threshold)
     
 if __name__ == '__main__':
     test(2)
