@@ -34,7 +34,7 @@ class GleasonConfig():
         self.train_batch_size = 2
         self.val_batch_size = 2
 
-        self.num_batches_to_validate_over = 10 # number of batches to validate over 32*100 = 3200
+        self.num_batches_to_validate_over = 50 # number of batches to validate over 32*100 = 3200
         self.validate_every_num_steps = 100 # perform a validation step
 
         self.num_train_epochs = 10000

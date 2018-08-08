@@ -27,10 +27,10 @@ def match(filepaths):
         for j in range(len(slides)):
 
             s_file_name = slides[j].split('/')[-1]
-            s_key = s_file_name.split('_')[0] + '_' + s_file_name.split('_')[3] + '_' + s_file_name.split('_')[4] 
+            s_key = s_file_name.split('_')[0] + '_' + s_file_name.split('_')[5] + '_' + s_file_name.split('_')[6] + '_' + s_file_name.split('_')[7]
 
             m_file_name = masks[i].split('/')[-1]
-            m_key = m_file_name.split('_')[0] + '_' + m_file_name.split('_')[4] + '_' + m_file_name.split('_')[5] 
+            m_key = m_file_name.split('_')[0] + '_' + m_file_name.split('_')[5] + '_' + m_file_name.split('_')[6]  + '_' + m_file_name.split('_')[7]
 
             if s_key == m_key:
                 matched.append((slides[j],masks[i]))
