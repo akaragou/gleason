@@ -26,7 +26,7 @@ class GleasonConfig():
         self.optimizer = "adam"
         self.momentum = 0.9 # if optimizer is nestrov
 
-        self.initial_learning_rate = 0.05
+        self.initial_learning_rate = 3e-04
         self.decay_learning_rate = True
         self.decay_steps = 5000 # number of steps before decaying the learning rate
         self.learning_rate_decay_factor = 0.5 

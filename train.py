@@ -26,12 +26,31 @@ def train(device, loss_name, binary, grayscale):
     [config.val_fn], num_epochs=config.num_train_epochs)
 
     model_train_name = 'unet'
-    dt_stamp = time.strftime(loss_name + "_%Y_%m_%d_%H_%M_%S")
+    name = loss_name
+    
+    if binary == 1:
+        name = name + '_' + 'binary'
+    else:
+        name = name + '_' + 'multi'
+    if grayscale == 1:
+        name = name + '_' + 'grayscale'
+    else:
+        name = name + '_' + 'color'
+
+    dt_stamp = time.strftime(name + "_%Y_%m_%d_%H_%M_%S")
     out_dir = config.get_results_path(model_train_name, dt_stamp)
     summary_dir = config.get_summaries_path(model_train_name, dt_stamp)
     print '-'*60
     print 'Training model: {0}'.format(dt_stamp)
     print '-'*60
+
+    if grayscale == 1:
+        print "Converting to Grayscale..."
+        config.train_augmentations_dic['grayscale'] = True
+        config.val_augmentations_dic['grayscale'] = True
+    else:
+        config.train_augmentations_dic['grayscale'] = False
+        config.val_augmentations_dic['grayscale'] = False
 
     train_images, train_masks = read_and_decode(filename_queue = train_filename_queue,
                                                 img_dims = config.input_image_size,
@@ -50,18 +69,10 @@ def train(device, loss_name, binary, grayscale):
     step = tf.train.get_or_create_global_step()
     step_op = tf.assign(step, step+1)
 
-    if binary:
+    if binary == 1:
         print "Converting to Binary..."
-        train_masks = tf.cond(tf.greater_equal(train_masks, 2), tf.assign(train_masks, 2), train_masks)
-        val_masks = tf.cond(tf.greater_equal(val_masks, 2), tf.assign(val_masks, 2), val_masks)
-
-    if grayscale:
-        print "Converting to Grayscale..."
-        train_augmentations_dic['grayscale'] = True
-        val_augmentations_dic['grayscale'] = True
-    else:
-        train_augmentations_dic['grayscale'] = False
-        val_augmentations_dic['grayscale'] = False
+        train_masks = tf.clip_by_value(train_masks, 0, 2)
+        val_masks = tf.clip_by_value(val_masks, 0, 2)
 
     # summaries to use with tensorboard check https://www.tensorflow.org/get_started/summaries_and_tensorboard
 
@@ -178,7 +189,7 @@ def train(device, loss_name, binary, grayscale):
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
         np.save(os.path.join(out_dir, 'training_config_file'), config)
-        max_val_iou, losses = -float('inf'), []
+        max_val_acc, losses = -float('inf'), []
 
         try:
 
@@ -196,6 +207,7 @@ def train(device, loss_name, binary, grayscale):
 
                     it_iou = np.asarray([])
                     it_acc = np.asarray([])
+                    
                     for num_vals in range(config.num_batches_to_validate_over):
                      
                         it_iou = np.append(
@@ -221,13 +233,13 @@ def train(device, loss_name, binary, grayscale):
                     print "learning rate: ", lr_value
 
                     # Save the model checkpoint if it's the best yet
-                    if val_iou_total >= max_val_iou:
+                    if val_acc_total >= max_val_acc:
                         file_name = 'unet_{0}_{1}'.format(dt_stamp, step_count)
                         saver.save(
                             sess,
                             config.get_checkpoint_filename(model_train_name, file_name))
                     
-                        max_val_iou = val_iou_total
+                        max_val_acc = val_acc_total
             
                 else:
                     # Training status
@@ -256,6 +268,6 @@ if __name__ == '__main__':
     parser.add_argument("binary")
     parser.add_argument("grayscale")
     args = parser.parse_args()
-    train(args.device, args.loss, args.binary, args.grayscale) # select gpu to train model on
+    train(args.device, args.loss, int(args.binary), int(args.grayscale)) # select gpu to train model on
 
 
