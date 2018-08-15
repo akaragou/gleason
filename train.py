@@ -48,9 +48,16 @@ def train(device, loss_name, binary, grayscale):
         print "Converting to Grayscale..."
         config.train_augmentations_dic['grayscale'] = True
         config.val_augmentations_dic['grayscale'] = True
+
     else:
         config.train_augmentations_dic['grayscale'] = False
         config.val_augmentations_dic['grayscale'] = False
+
+    if binary == 1:
+        print "Converting to Output Shape to Binary..."
+        config.output_shape = 2
+    else:
+        config.output_shape = 5
 
     train_images, train_masks = read_and_decode(filename_queue = train_filename_queue,
                                                 img_dims = config.input_image_size,
@@ -66,13 +73,13 @@ def train(device, loss_name, binary, grayscale):
                                              num_of_threads = 2,
                                              shuffle = True)
 
-    step = tf.train.get_or_create_global_step()
-    step_op = tf.assign(step, step+1)
-
     if binary == 1:
-        print "Converting to Binary..."
+        print "Converting Masks to Binary..."
         train_masks = tf.clip_by_value(train_masks, 0, 2)
         val_masks = tf.clip_by_value(val_masks, 0, 2)
+
+    step = tf.train.get_or_create_global_step()
+    step_op = tf.assign(step, step+1)
 
     # summaries to use with tensorboard check https://www.tensorflow.org/get_started/summaries_and_tensorboard
 

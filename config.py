@@ -38,7 +38,6 @@ class GleasonConfig():
         self.validate_every_num_steps = 100 # perform a validation step
 
         self.num_train_epochs = 10000
-        self.output_shape = 5 # output shape of the model if 2 we have binary classification 
         self.input_image_size = [512, 512, 3] # size of the input tf record image
         
         self.train_augmentations_dic = {
