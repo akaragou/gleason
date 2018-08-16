@@ -13,7 +13,7 @@ from tf_record import read_and_decode
 import resource
 
 
-def train(device, loss_name, binary, grayscale):
+def train(device, loss_name, trinary, grayscale):
 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device) # use nvidia-smi to see available options '0' means first gpu
     config = GleasonConfig() # loads configuration
@@ -28,8 +28,8 @@ def train(device, loss_name, binary, grayscale):
     model_train_name = 'unet'
     name = loss_name
     
-    if binary == 1:
-        name = name + '_' + 'binary'
+    if trinary == 1:
+        name = name + '_' + 'trinary'
     else:
         name = name + '_' + 'multi'
     if grayscale == 1:
@@ -53,9 +53,9 @@ def train(device, loss_name, binary, grayscale):
         config.train_augmentations_dic['grayscale'] = False
         config.val_augmentations_dic['grayscale'] = False
 
-    if binary == 1:
-        print "Converting to Output Shape to Binary..."
-        config.output_shape = 2
+    if trinary == 1:
+        print "Converting to Output Shape to Trinary..."
+        config.output_shape = 3
     else:
         config.output_shape = 5
 
@@ -73,8 +73,8 @@ def train(device, loss_name, binary, grayscale):
                                              num_of_threads = 2,
                                              shuffle = True)
 
-    if binary == 1:
-        print "Converting Masks to Binary..."
+    if trinary == 1:
+        print "Converting Masks to Trinary..."
         train_masks = tf.clip_by_value(train_masks, 0, 2)
         val_masks = tf.clip_by_value(val_masks, 0, 2)
 
@@ -89,6 +89,7 @@ def train(device, loss_name, binary, grayscale):
             with slim.arg_scope(unet.unet_arg_scope()):
                 train_logits, end_points = unet.Unet(train_images,
                                             is_training=True,
+                                            is_batch_norm = True,
                                             num_classes = config.output_shape,
                                             scope=unet_scope)
 
@@ -148,6 +149,7 @@ def train(device, loss_name, binary, grayscale):
             with slim.arg_scope(unet.unet_arg_scope()):
                 val_logits, _ = unet.Unet(val_images,
                                             is_training=False,
+                                             is_batch_norm = True,
                                             num_classes = config.output_shape,
                                             scope=unet_scope)
 
@@ -175,11 +177,23 @@ def train(device, loss_name, binary, grayscale):
     with tf.name_scope('train_data'):
         tf.summary.image('train images', train_images, max_outputs=1)
         tf.summary.image('train masks', train_masks, max_outputs=1)
+
+        if trinary == 1:
+            train_pred_mask = config.rescale(train_pred_mask, 0, 2)
+        else:
+            train_pred_mask = config.rescale(train_pred_mask, 0, 4)
+
         tf.summary.image('train pred mask', train_pred_mask, max_outputs=1)
 
     with tf.name_scope('val_data'):
         tf.summary.image('validation images', val_images, max_outputs=1)
         tf.summary.image('validation masks', val_masks, max_outputs=1)
+
+        if trinary == 1:
+            val_pred_mask = config.rescale(val_pred_mask, 0, 2)
+        else:
+            val_pred_mask = config.rescale(val_pred_mask, 0, 4)
+
         tf.summary.image('val pred mask', val_pred_mask, max_outputs=1)
 
         saver = tf.train.Saver(slim.get_model_variables(), max_to_keep=100)
@@ -264,17 +278,14 @@ def train(device, loss_name, binary, grayscale):
             np.save(os.path.join(out_dir, 'training_loss'), losses)
         coord.join(threads)
         sess.close()
-                
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("device")
     parser.add_argument("loss")
-    parser.add_argument("binary")
+    parser.add_argument("trinary")
     parser.add_argument("grayscale")
     args = parser.parse_args()
-    train(args.device, args.loss, int(args.binary), int(args.grayscale)) # select gpu to train model on
+    train(args.device, args.loss, int(args.trinary), int(args.grayscale)) # select gpu to train model on
 
 

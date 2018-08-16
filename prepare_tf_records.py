@@ -6,8 +6,9 @@ import numpy as np
 import os
 from tf_record import create_tf_record
 from tqdm import tqdm
+import csv
 
-def match(filepaths):
+def match(filepaths, norm_dic):
 
     slides = []
     masks = []
@@ -27,13 +28,13 @@ def match(filepaths):
         for j in range(len(slides)):
 
             s_file_name = slides[j].split('/')[-1]
-            s_key = s_file_name.split('_')[0] + '_' + s_file_name.split('_')[5] + '_' + s_file_name.split('_')[6] + '_' + s_file_name.split('_')[7]
+            s_key = s_file_name.split('_')[0] + '_' + s_file_name.split('_')[3] + '_' + s_file_name.split('_')[4]
 
             m_file_name = masks[i].split('/')[-1]
-            m_key = m_file_name.split('_')[0] + '_' + m_file_name.split('_')[5] + '_' + m_file_name.split('_')[6]  + '_' + m_file_name.split('_')[7]
+            m_key = m_file_name.split('_')[0] + '_' + m_file_name.split('_')[4]  + '_' + m_file_name.split('_')[5]
 
             if s_key == m_key:
-                matched.append((slides[j],masks[i]))
+                matched.append((slides[j],masks[i], 0, 0))
 
     return matched
 
@@ -70,6 +71,13 @@ def calculate_class_weights(mask_filepaths):
 
 def build_tfrecords(main_data_dir):
 
+    norm_dic = {}
+
+    with open('miriam_norm_data.csv', 'rb') as f:
+        f.next()
+        reader = csv.reader(f)
+        for line in reader:
+            norm_dic[line[0]] = (float(line[1]), float(line[2]))
     tf_record_file_path = os.path.join(main_data_dir, 'tfrecords')
 
     train_file_paths = glob.glob(os.path.join(main_data_dir, 'train2') + '/*.npy')
@@ -77,18 +85,18 @@ def build_tfrecords(main_data_dir):
     test_file_paths =  glob.glob(os.path.join(main_data_dir, 'test2') + '/*.npy')
 
     print "Creating Train tfrecords..."
-    train_slides_masks = match(train_file_paths)
+    train_slides_masks = match(train_file_paths, norm_dic)
     create_tf_record(os.path.join(tf_record_file_path, 'train2.tfrecords'), train_slides_masks)
 
     print
     print "Creating Val tfrecords..."
-    val_slides_masks = match(val_file_paths)
+    val_slides_masks = match(val_file_paths, norm_dic)
     # calculate_class_weights(val_slides_masks)
     create_tf_record(os.path.join(tf_record_file_path, 'val2.tfrecords'), val_slides_masks)
 
     print   
     print "Creating Test tfrecords..."
-    test_slides_masks = match(test_file_paths)
+    test_slides_masks = match(test_file_paths, norm_dic)
     create_tf_record(os.path.join(tf_record_file_path, 'test2.tfrecords'), test_slides_masks)
     
 if __name__ == '__main__':

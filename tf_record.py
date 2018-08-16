@@ -28,20 +28,20 @@ def _float_feature(value):
     return tf.train.Feature(float_list = tf.train.FloatList(value=[value]))
 
 def draw_grid(im, grid_size):
-    """ Draws grid lines on input images
-    Inputs: im - input image
-            grid_size - number of vertical/horizontal grid lines
-    Output: im - image with grid lines
-    """
-    shape = im.shape
-    for i in range(0, shape[1], grid_size):
-        cv2.line(im, (i, 0), (i, shape[0]), color=(0,0,0),thickness=2)
-    for j in range(0, shape[0], grid_size):
-        cv2.line(im, (0, j), (shape[1], j), color=(0,0,0),thickness=2)
-       
-    return im
+  """ Draws grid lines on input images
+  Inputs: im - input image
+          grid_size - number of vertical/horizontal grid lines
+  Output: im - image with grid lines
+  """
+  shape = im.shape
+  for i in range(0, shape[1], grid_size):
+      cv2.line(im, (i, 0), (i, shape[0]), color=(0,0,0),thickness=2)
+  for j in range(0, shape[0], grid_size):
+      cv2.line(im, (0, j), (shape[1], j), color=(0,0,0),thickness=2)
+     
+  return im
 
-def encode(img_filepath, mask_filepath):
+def encode(img_filepath, mask_filepath, mean, std):
 
   image = np.load(img_filepath)
   mask = np.load(mask_filepath)
@@ -55,71 +55,29 @@ def encode(img_filepath, mask_filepath):
 
     'image_raw': _bytes_feature(img_raw),
     'mask_raw':_bytes_feature(m_raw),
+    # 'mean':_float_feature(mean),
+    # 'std':_float_feature(std)
 
   }))
 
   return example
 
-def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
-  """
-  Source: https://github.com/tensorflow/models/blob/master/research/slim/preprocessing/inception_preprocessing.py
-  Distort the color of a Tensor image.
-  Each color distortion is non-commutative and thus ordering of the color ops
-  matters. Ideally we would randomly permute the ordering of the color ops.
-  Rather then adding that level of complication, we select a distinct ordering
-  of color ops for each preprocessing thread.
-  Args:
-    image: 3-D Tensor containing single image in [0, 1].
-    color_ordering: Python int, a type of distortion (valid values: 0-3).
-    fast_mode: Avoids slower ops (random_hue and random_contrast)
-    scope: Optional scope for name_scope.
-  Returns:
-    3-D Tensor color-distorted image on range [0, 1]
-  Raises:
-    ValueError: if color_ordering not in [0, 3]
-  """
-  with tf.name_scope(scope, 'distort_color', [image]):
-    if fast_mode:
-      if color_ordering == 0:
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-      else:
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-    else:
-      if color_ordering == 0:
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_hue(image, max_delta=0.2)
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-      elif color_ordering == 1:
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-        image = tf.image.random_hue(image, max_delta=0.2)
-      elif color_ordering == 2:
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-        image = tf.image.random_hue(image, max_delta=0.2)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-      elif color_ordering == 3:
-        image = tf.image.random_hue(image, max_delta=0.2)
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-      else:
-        raise ValueError('color_ordering must be in [0, 3]')
+def distort_brightness_constrast(image, ordering=0):
+  if ordering == 0:
+    image = tf.image.random_brightness(image, max_delta=32. / 255.)
+    image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+  else:
+    image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+    image = tf.image.random_brightness(image, max_delta=32. / 255.)
+  return tf.clip_by_value(image, 0.0, 1.0)
 
-    # The random_* ops do not necessarily clamp.
-    return tf.clip_by_value(image, 0.0, 1.0)
-
-def create_tf_record(tfrecords_filename, images_masks):
+def create_tf_record(tfrecords_filename, images_masks_stats):
 
     writer = tf.python_io.TFRecordWriter(tfrecords_filename)
-    # for i in tqdm(range(len(images_masks))):
+    # for i in tqdm(range(len(images_masks_stats))):
 
-    #     image = np.load(images_masks[i][0])
-    #     mask = np.load(images_masks[i][1])
+    #     image = np.load(images_masks_stats[i][0])
+    #     mask = np.load(images_masks_stats[i][1])
 
     #     image = draw_grid(image, 50)
 
@@ -142,7 +100,7 @@ def create_tf_record(tfrecords_filename, images_masks):
     # writer.close()
 
     with ProcessPoolExecutor(12) as executor:
-      futures = [executor.submit(encode, i, m) for i, m in images_masks]
+      futures = [executor.submit(encode, i, m, mean, std) for i, m, mean, std in images_masks_stats]
 
       kwargs = {
           'total': len(futures),
@@ -179,12 +137,17 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
     
       features={
         'image_raw': tf.FixedLenFeature([], tf.string),
-        'mask_raw': tf.FixedLenFeature([], tf.string)
+        'mask_raw': tf.FixedLenFeature([], tf.string),
+        # 'mean': tf.FixedLenFeature([], tf.float64),
+        # 'std': tf.FixedLenFeature([], tf.float64)
         
         })
 
     image = tf.decode_raw(features['image_raw'], tf.uint8)
     mask = tf.decode_raw(features['mask_raw'], tf.uint8)
+
+    # mean = tf.decode_raw(features['mean'], tf.float64)
+    # std = tf.decode_raw(features['std'],  tf.float64)
 
     image = tf.reshape(image, img_dims)
     mask = tf.reshape(mask, img_dims[:2])
@@ -215,13 +178,6 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
         random_angle = elems[tf.cast(sample, tf.int32)]
         image = tf.contrib.image.rotate(image, random_angle)
         mask = tf.contrib.image.rotate(mask, random_angle)
-
-    if augmentations_dic['color_distor']:
-        elems = tf.convert_to_tensor([0, 1, 2, 3])
-        sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25, 0.25, 0.25]]), 1)) 
-        rand_int = elems[tf.cast(sample, tf.int32)]
-        image = distort_color(image, color_ordering=rand_int)
-
     
     if shuffle:
         image, mask = tf.train.shuffle_batch([image, mask],
@@ -273,6 +229,12 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
 
     if augmentations_dic['grayscale']:
         image = tf.image.rgb_to_grayscale(image)
+
+    if augmentations_dic['distort_brightness_constrast']:
+        elems = tf.convert_to_tensor([0, 1])
+        sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25]]), 1)) 
+        rand_int = elems[tf.cast(sample, tf.int32)]
+        image = distort_brightness_constrast(image, ordering=rand_int)
 
     mask = tf.to_int64(mask)
 

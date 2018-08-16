@@ -45,7 +45,7 @@ class GleasonConfig():
                                         'rand_flip_top_bottom':True,
                                         'rand_rotate':True,
                                         'warp':True,
-                                        'color_distor':True,
+                                        'distort_brightness_constrast':True,
                                         'grayscale':False
                                        }
 
@@ -55,7 +55,7 @@ class GleasonConfig():
                                       'rand_rotate':False,
                                       'warp':False,
                                       'color_distor':False,
-                                      'color_distor':False,
+                                      'distort_brightness_constrast':False,
                                       'grayscale':False
                                      }
 
@@ -82,7 +82,19 @@ class GleasonConfig():
             return losses
 
     def dice_loss():
-        pass 
+        pass
+
+    def rescale(self, tensor, min_new, max_new):
+
+        min_old = tf.reduce_min(tensor)
+        max_old = tf.reduce_max(tensor)
+
+        ratio = (max_new - min_new) / ((max_old - min_old)+ 1e-8)
+        tensor = tensor - max_old
+        tensor = ratio*tensor
+        tensor = tensor+max_new
+
+        return tensor
 
     def pixel_accuracy(self, y_true, y_pred, num_clas = 5):
 
