@@ -29,11 +29,13 @@ def test_Unet(device, trinary, grayscale, checkpoint):
     test_filename_queue = tf.train.string_input_producer([config.test_fn], num_epochs = 1)
 
     if grayscale == "1":
+        print "Converting to Grayscale..."
         config.val_augmentations_dic['grayscale'] = True
     else:
         config.val_augmentations_dic['grayscale'] = False
 
     if trinary == "1":
+        print "Converting to Trinary..."
         config.output_shape = 3
     else:
         config.output_shape = 5
