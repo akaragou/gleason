@@ -7,8 +7,9 @@ import os
 from tf_record import create_tf_record
 from tqdm import tqdm
 import csv
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
-def match(filepaths):
+def match(filepaths, return_masks_only):
 
     slides = []
     masks = []
@@ -25,7 +26,10 @@ def match(filepaths):
     
     print len(masks)
     print len(slides)
-    # print masks
+
+    if return_masks_only:
+        return masks
+
     matched = []
     for i in tqdm(range(len(masks))):
         for j in range(len(slides)):
@@ -40,36 +44,48 @@ def match(filepaths):
                 matched.append((slides[j],masks[i]))
     return matched
 
-def calculate_class_weights(mask_filepaths):
+def populate_dic(class_dic, mask_filepath):
+
+    mask = np.load(mask_filepath)
+    flattened_masks = np.ravel(mask)
+    unique, counts = np.unique(flattened_masks, return_counts=True)
+    for u, c in zip(unique, counts):
+        class_dic[u] += c
+    return class_dic
+
+def calculate_class_weights(mask_filepaths, data_set):
 
     print "Calculating class weights..."
-    class_dic = {}
+    class_dic = {0:0, 1:0, 2:0, 3:0, 4:0}
+    class_dic_list = [class_dic for _ in range(len(mask_filepaths))]
 
-    for i in tqdm(range(len(mask_filepaths))):
-        mask = np.load(mask_filepaths[i][1])
-        flattened_masks = np.ravel(mask)
-        unique, counts = np.unique(flattened_masks, return_counts=True)
+    results_dic = {0:0, 1:0, 2:0, 3:0, 4:0}
+    with ProcessPoolExecutor(16) as executor:
+        futures = [executor.submit(populate_dic, class_dic, m) for class_dic, m in zip(class_dic_list, mask_filepaths)]
+        kwargs = {
+          'total': len(futures),
+          'unit': 'it',
+          'unit_scale': True,
+          'leave': True
+        }
+        for f in tqdm(as_completed(futures), **kwargs):
+            pass
+        print "Done loading futures!"
+        for i in tqdm(range(len(futures))):
+            try:
+                result = (futures[i].result())
+                for i in range(5):
+                    results_dic[i] += result[i]
+            except Exception as e:
+                print "Failed to count labels"
 
-        for u, c in zip(unique, counts):
-
-            if u not in class_dic:
-                class_dic[u] = c
-            else:
-                class_dic[u] += c
-
-    sorted_class_keys = sorted(class_dic)
-    print sorted_class_keys
-    values = [class_dic[k] for k in sorted_class_keys]
-    print values
-    f_i = map(lambda x: sum(values)/x, values)
-    print f_i
-    class_weights = np.array(map(lambda x: x/sum(f_i), f_i), dtype=np.float32)
+    values = [results_dic[k] for k in range(5)]
+    f_i = [sum(values)/v for v in values]
+    class_weights = [f/sum(f_i) for f in f_i]
+    print [v/sum(values) for v in values]
     print class_weights
-    # f_i = map(lambda x: len(flattened_masks)/x, 
-    #                         class_dic.values())
-    # class_weights =np.array(map(lambda x: x/sum(f_i), f_i), dtype=np.float32)
-    # np.save('class_weights_Berson.npy', class_weights)
-    print "Done calculating class weights!"
+    np.save(data_set + '_class_weights.npy', class_weights)
+
 
 def build_tfrecords(main_data_dir):
 
@@ -81,18 +97,19 @@ def build_tfrecords(main_data_dir):
 
     # print "Creating Train tfrecords..."
     # train_slides_masks = match(train_file_paths)
+    calculate_class_weights(match(train_file_paths, True), 'train')
     # create_tf_record(os.path.join(tf_record_file_path, 'train.tfrecords'), train_slides_masks)
 
-    print
-    print "Creating Val tfrecords..."
-    val_slides_masks = match(val_file_paths)
-    # calculate_class_weights(val_slides_masks)
-    create_tf_record(os.path.join(tf_record_file_path, 'val.tfrecords'), val_slides_masks)
+    # print
+    # print "Creating Val tfrecords..."
+    # val_slides_masks = match(val_file_paths)
+    # calculate_class_weights(match(val_file_paths, True))
+    # create_tf_record(os.path.join(tf_record_file_path, 'val.tfrecords'), val_slides_masks)
 
     # print   
-    print "Creating Test tfrecords..."
-    test_slides_masks = match(test_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'test.tfrecords'), test_slides_masks)
+    # print "Creating Test tfrecords..."
+    # test_slides_masks = match(test_file_paths)
+    # create_tf_record(os.path.join(tf_record_file_path, 'test.tfrecords'), test_slides_masks)
     
 if __name__ == '__main__':
 
