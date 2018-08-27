@@ -11,78 +11,73 @@ from sklearn.utils import shuffle
 
 def copy_train(file_name):
     
-    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/gleason_img_crops/'+file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/train2/'+file_name)
+    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'+file_name, 
+                    '/media/data_cifs/andreas/pathology/gleason_training/train/'+file_name)
     
     return file_name
 
 def copy_val(file_name):
     
-    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/gleason_img_crops/'+file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/val2/'+file_name)
+    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'+file_name, 
+                    '/media/data_cifs/andreas/pathology/gleason_training/val/'+file_name)
     
     return file_name
 
 def copy_test(file_name):
     
-    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/gleason_img_crops/'+file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/test2/'+file_name)
+    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'+file_name, 
+                    '/media/data_cifs/andreas/pathology/gleason_training/test/'+file_name)
     
     return file_name
 
+def copy_all_imgs():
+
+    image_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
+    mask_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'
+
+    images_full_path = glob.glob(mask_data_path + '*.npy')
+    all_images = []
+
+    for i in range(len(images_full_path)):
+
+        img_name = images_full_path[i].split('/')[-1]
+        all_images.append(img_name) 
+
+    train_images = []
+    val_images = []
+    test_images = []
+
+    val_ids = ['TMH0014A', 'TMH0014F', 'TMH0018B', 'TMH0019B', 'TMH0019J', 
+                'TMH0020C', 'TMH0069L', 'TMH0070M-2', 'moffitt15', 'moffitt6']
+
+    test_ids = ['TMH0018E', 'TMH0019G', 'TMH0024E', 'TMH0025E', 'TMH0034D', 
+                'TMH0034G', 'TMH0069C', 'moffitt14', 'moffitt16', 'moffitt4']
+
+    for i in range(len(all_images)):
+
+        img_id = all_images[i].split('_')[0]
+
+        if img_id in test_ids:
+            test_images.append(all_images[i])
+        elif img_id in val_ids:
+            val_images.append(all_images[i])
+        else:
+            train_images.append(all_images[i])
 
 
-# def copy_all_imgs():
+    print "moving train images..."
+    with concurrent.futures.ProcessPoolExecutor(16) as executor:
+        executor.map(copy_train, train_images)
+    print "done moving train images!"
 
-#     image_data_path = '/media/data_cifs/andreas/pathology/miriam/gleason_img_crops/'
-#     mask_data_path = '/media/data_cifs/andreas/pathology/miriam/gleason_mask_crops/'
+    print "moving val images..."
+    with concurrent.futures.ProcessPoolExecutor(16) as executor:
+        executor.map(copy_val, val_images)
+    print "done moving val images!"
 
-#     images_full_path = glob.glob(image_data_path + '*.npy')
-#     all_images = []
-
-#     for i in range(len(images_full_path)):
-
-#         img_name = images_full_path[i].split('/')[-1]
-#         all_images.append(img_name) 
-
-
-#     train_images = []
-#     val_images = []
-#     test_images = []
-
-#     val_ids = ['TMH0034D','TMH0041C','TMH0045H','TMH0020D','TMH0019G','TMH0025E']
-
-#     test_ids = ['TMH0023C','TMH0024D','TMH0024E','TMH0034J','TMH0043B',
-#                 'TMH0045F','TMH0019G','TMH0018F','TMH0012C','TMH0023D']
-
-
-
-#     for i in range(len(all_images)):
-
-#         img_id = all_images[i].split('_')[0]
-
-
-#         if img_id in test_ids:
-#             test_images.append(all_images[i])
-#         elif img_id in val_ids:
-#             val_images.append(all_images[i])
-#         else:
-#             train_images.append(all_images[i])
-
-
-#     print "moving train images..."
-#     with concurrent.futures.ProcessPoolExecutor(16) as executor:
-#         executor.map(copy_train, train_images)
-#     print "done moving train images!"
-
-#     print "moving val images..."
-#     with concurrent.futures.ProcessPoolExecutor(16) as executor:
-#         executor.map(copy_val, val_images)
-#     print "done moving val images!"
-
-#     print "moving test images..."
-#     with concurrent.futures.ProcessPoolExecutor(16) as executor:
-#         executor.map(copy_test, test_images)
+    print "moving test images..."
+    with concurrent.futures.ProcessPoolExecutor(16) as executor:
+        executor.map(copy_test, test_images)
 
 def match(filepaths):
 
@@ -114,63 +109,23 @@ def match(filepaths):
 
     return matched
 
-def copy(file_name):
-    
-    shutil.copyfile('/media/data_cifs/andreas/pathology/gleason_training/test/'+file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/test2/'+file_name)
-    
-    return file_name
+def get_unique_ids():
 
-def copy_imgs():
+    data_path = '/media/data_cifs/andreas/pathology/gleason_training/test/'
 
-    old_data_path = '/media/data_cifs/andreas/pathology/gleason_training/test/'
-    images_full_path = glob.glob(old_data_path + '*.npy')
-    old_images = []
+    images_full_path = glob.glob(data_path + '*.npy')
+    img_ids = []
+
     for i in range(len(images_full_path)):
-        img_name = images_full_path[i].split('/')[-1]
-        old_images.append(img_name) 
+        id_name = images_full_path[i].split('/')[-1].split('_')[0]
+        img_ids.append(id_name) 
 
+    img_ids = np.array(img_ids)
+    img_ids = np.unique(img_ids)
 
-    new_data_path = '/media/data_cifs/andreas/pathology/gleason_training/test2/'
-    images_full_path = glob.glob(new_data_path + '*.npy')
-    new_images = []
-    for i in range(len(images_full_path)):
-        img_name = images_full_path[i].split('/')[-1]
-        new_images.append(img_name) 
+    for i_id in img_ids:
+        print i_id
 
-
-    potential_move = []
-    for img in old_images:
-
-        if img not in new_images:
-            potential_move.append(img)
-
-    potential_move_matched = match(potential_move)
-
-    count = 0
-
-    to_move_matched = []
-    for img in potential_move_matched:
-
-        to_move_matched.append(img)
-        count += 1
-        if count == 500:
-            break
-
-  
-    to_move = []
-    for m in to_move_matched:
-        to_move.append(m[0])
-        to_move.append(m[1])
-    print to_move
-    print len(to_move)
-
-
-    print "moving ..."
-    with concurrent.futures.ProcessPoolExecutor(16) as executor:
-        executor.map(copy, to_move)
-    print "done moving!"
-        
 
 if __name__ == '__main__':
-    copy_imgs()
+    get_unique_ids()

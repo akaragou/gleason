@@ -41,9 +41,10 @@ def draw_grid(im, grid_size):
      
   return im
 
-def encode(img_filepath, mask_filepath, mean, std):
+def encode(img_filepath, mask_filepath):
 
   image = np.load(img_filepath)
+  image = image[:,:,:3]
   mask = np.load(mask_filepath)
 
   # image = draw_grid(image, 50)
@@ -100,7 +101,7 @@ def create_tf_record(tfrecords_filename, images_masks_stats):
     # writer.close()
 
     with ProcessPoolExecutor(12) as executor:
-      futures = [executor.submit(encode, i, m, mean, std) for i, m, mean, std in images_masks_stats]
+      futures = [executor.submit(encode, i, m) for i, m in images_masks_stats]
 
       kwargs = {
           'total': len(futures),
@@ -156,85 +157,92 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
     mask = tf.to_float(mask)
 
     mask = tf.expand_dims(mask,-1)
-    image = image/255
+
+    image = image / 255.0
+    # image = image - 1.0
+    # image = image / 2.0
+
     image_mask = tf.concat([image, mask], axis=-1)
 
     if augmentations_dic['rand_flip_left_right']:
-        image_mask = tf.image.random_flip_left_right(image_mask)
-        image = image_mask[...,:3]
-        mask = image_mask[...,3]
-        mask = tf.expand_dims(mask,-1)
+      image_mask = tf.image.random_flip_left_right(image_mask)
+      image = image_mask[...,:3]
+      mask = image_mask[...,3]
+      mask = tf.expand_dims(mask,-1)
+
+    if augmentations_dic['rand_flip_left_right']:
+      image_mask = tf.image.random_flip_left_right(image_mask)
+      image = image_mask[...,:3]
+      mask = image_mask[...,3]
+      mask = tf.expand_dims(mask,-1)
 
     image_mask = tf.concat([image, mask], axis=-1)
     if augmentations_dic['rand_flip_top_bottom']:     
-        image_mask = tf.image.random_flip_up_down(image_mask)
-        image = image_mask[...,:3]
-        mask = image_mask[...,3]
-        mask = tf.expand_dims(mask,-1) 
+      image_mask = tf.image.random_flip_up_down(image_mask)
+      image = image_mask[...,:3]
+      mask = image_mask[...,3]
+      mask = tf.expand_dims(mask,-1) 
 
     if augmentations_dic['rand_rotate']:
-        elems = tf.convert_to_tensor([0, PI/2, PI, (3*PI)/2])
-        sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25, 0.25, 0.25]]), 1)) 
-        random_angle = elems[tf.cast(sample, tf.int32)]
-        image = tf.contrib.image.rotate(image, random_angle)
-        mask = tf.contrib.image.rotate(mask, random_angle)
+      elems = tf.convert_to_tensor([0, PI/2, PI, (3*PI)/2])
+      sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25, 0.25, 0.25]]), 1)) 
+      random_angle = elems[tf.cast(sample, tf.int32)]
+      image = tf.contrib.image.rotate(image, random_angle)
+      mask = tf.contrib.image.rotate(mask, random_angle)
     
     if shuffle:
-        image, mask = tf.train.shuffle_batch([image, mask],
+      image, mask = tf.train.shuffle_batch([image, mask],
                                            batch_size=size_of_batch,
                                            capacity=100 + 3 * size_of_batch,
                                            min_after_dequeue=100,
                                            num_threads=num_of_threads)
     else:
-        image, mask = tf.train.batch([image, mask],
+      image, mask = tf.train.batch([image, mask],
                                    batch_size=size_of_batch,
                                    capacity=100,
                                    allow_smaller_final_batch=True,
                                    num_threads=num_of_threads)
     
     if augmentations_dic['warp']:
-        X = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
-        Y = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
-        X = tf.reshape(X, [1, img_dims[0],img_dims[1], 1])
-        Y = tf.reshape(Y, [1, img_dims[0],img_dims[1], 1])
+      X = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
+      Y = tf.random_uniform([img_dims[0], img_dims[1]])*2 - 1
+      X = tf.reshape(X, [1, img_dims[0],img_dims[1], 1])
+      Y = tf.reshape(Y, [1, img_dims[0],img_dims[1], 1])
 
-        mean = 0.0
-        sigma = 1.0
-        alpha = 20.0
-        ksize = 256
+      mean = 0.0
+      sigma = 1.0
+      alpha = 20.0
+      ksize = 256
 
-        x = tf.linspace(-3.0, 3.0, ksize)
-        z = ((1.0 / (sigma * tf.sqrt(2.0 * PI))) * tf.exp(tf.negative(tf.pow(x - mean, 2.0) / (2.0 * tf.pow(sigma, 2.0)))))
-        ksize = z.get_shape().as_list()[0]
-        z_2d = tf.matmul(tf.reshape(z, [ksize, 1]), tf.reshape(z, [1, ksize]))
-        z_4d = tf.reshape(z_2d, [ksize, ksize, 1, 1])
+      x = tf.linspace(-3.0, 3.0, ksize)
+      z = ((1.0 / (sigma * tf.sqrt(2.0 * PI))) * tf.exp(tf.negative(tf.pow(x - mean, 2.0) / (2.0 * tf.pow(sigma, 2.0)))))
+      ksize = z.get_shape().as_list()[0]
+      z_2d = tf.matmul(tf.reshape(z, [ksize, 1]), tf.reshape(z, [1, ksize]))
+      z_4d = tf.reshape(z_2d, [ksize, ksize, 1, 1])
 
-        X_convolved = tf.nn.conv2d(X, z_4d, strides=[1, 1, 1, 1], padding='SAME')
-        Y_convolved = tf.nn.conv2d(Y, z_4d, strides=[1, 1, 1, 1], padding='SAME')
+      X_convolved = tf.nn.conv2d(X, z_4d, strides=[1, 1, 1, 1], padding='SAME')
+      Y_convolved = tf.nn.conv2d(Y, z_4d, strides=[1, 1, 1, 1], padding='SAME')
 
-        X_convolved = (X_convolved / tf.reduce_max(X_convolved))*alpha
-        Y_convolved = (Y_convolved / tf.reduce_max(Y_convolved))*alpha
+      X_convolved = (X_convolved / tf.reduce_max(X_convolved))*alpha
+      Y_convolved = (Y_convolved / tf.reduce_max(Y_convolved))*alpha
 
-        trans = tf.stack([X_convolved,Y_convolved], axis=-1)
-        trans = tf.reshape(trans, [-1])
+      trans = tf.stack([X_convolved,Y_convolved], axis=-1)
+      trans = tf.reshape(trans, [-1])
 
-        batch_trans = tf.tile(trans, [size_of_batch])
-        batch_trans = tf.reshape(batch_trans, [size_of_batch, img_dims[0], img_dims[1] ,2])
+      batch_trans = tf.tile(trans, [size_of_batch])
+      batch_trans = tf.reshape(batch_trans, [size_of_batch, img_dims[0], img_dims[1] ,2])
 
-        image = tf.reshape(image, [size_of_batch, img_dims[0], img_dims[1], img_dims[2]])
-        mask = tf.reshape(mask, [size_of_batch, img_dims[0], img_dims[1], 1])
+      image = tf.reshape(image, [size_of_batch, img_dims[0], img_dims[1], img_dims[2]])
+      mask = tf.reshape(mask, [size_of_batch, img_dims[0], img_dims[1], 1])
 
-        image = tf.contrib.image.dense_image_warp(image, batch_trans)
-        mask = tf.contrib.image.dense_image_warp(mask, batch_trans)
+      image = tf.contrib.image.dense_image_warp(image, batch_trans)
+      mask = tf.contrib.image.dense_image_warp(mask, batch_trans)
 
     if augmentations_dic['grayscale']:
-        image = tf.image.rgb_to_grayscale(image)
+      mage = tf.image.rgb_to_grayscale(image)
 
     if augmentations_dic['distort_brightness_constrast']:
-        elems = tf.convert_to_tensor([0, 1])
-        sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25]]), 1)) 
-        rand_int = elems[tf.cast(sample, tf.int32)]
-        image = distort_brightness_constrast(image, ordering=rand_int)
+      image = distort_brightness_constrast(image, ordering=random.randint())
 
     mask = tf.to_int64(mask)
 

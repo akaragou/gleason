@@ -13,9 +13,9 @@ class GleasonConfig():
         self.summary_path = os.path.join(self.main_dir, 'summaries')
         self.results_path = os.path.join(self.main_dir, 'results')
        
-        self.train_fn =  os.path.join(self.main_dir, 'tfrecords/train2.tfrecords')
-        self.val_fn =  os.path.join(self.main_dir, 'tfrecords/val2.tfrecords')
-        self.test_fn =  os.path.join(self.main_dir, 'tfrecords/test2.tfrecords')
+        self.train_fn =  os.path.join(self.main_dir, 'tfrecords/train.tfrecords')
+        self.val_fn =  os.path.join(self.main_dir, 'tfrecords/val.tfrecords')
+        self.test_fn =  os.path.join(self.main_dir, 'tfrecords/test.tfrecords')
 
         self.exp_fn = os.path.join(self.main_dir, 'tfrecords/exp.tfrecords')
 
@@ -28,8 +28,8 @@ class GleasonConfig():
 
         self.initial_learning_rate = 3e-04
         self.decay_learning_rate = True
-        self.decay_steps = 5000 # number of steps before decaying the learning rate
-        self.learning_rate_decay_factor = 0.5 
+        self.decay_steps = 10000 # number of steps before decaying the learning rate
+        self.learning_rate_decay_factor = 10 
         
         self.train_batch_size = 2
         self.val_batch_size = 2
@@ -41,15 +41,15 @@ class GleasonConfig():
         self.input_image_size = [512, 512, 3] # size of the input tf record image
         
         self.train_augmentations_dic = {
-                                        'rand_flip_left_right':True,
-                                        'rand_flip_top_bottom':True,
-                                        'rand_rotate':True,
-                                        'warp':True,
-                                        'distort_brightness_constrast':True,
+                                        'rand_flip_left_right':False,
+                                        'rand_flip_top_bottom':False,
+                                        'rand_rotate':False,
+                                        'warp':False,
+                                        'distort_brightness_constrast':False,
                                         'grayscale':False
                                        }
 
-        self.val_augmentations_dic = {
+        self.val_augmentations_dic = { 
                                       'rand_flip_left_right':False,
                                       'rand_flip_top_bottom':False,
                                       'rand_rotate':False,
