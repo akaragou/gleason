@@ -17,7 +17,7 @@ def copy_train(file_name):
         all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
     shutil.copyfile(all_data_path + file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/train/'+file_name)
+                    '/media/data_cifs/andreas/pathology/gleason_training/updated_train/'+file_name)
     
     return file_name
 
@@ -29,7 +29,7 @@ def copy_val(file_name):
         all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
     shutil.copyfile(all_data_path + file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/val/'+file_name)
+                    '/media/data_cifs/andreas/pathology/gleason_training/updated_val/'+file_name)
     
     return file_name
 
@@ -41,7 +41,7 @@ def copy_test(file_name):
         all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
     shutil.copyfile(all_data_path + file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/test/'+file_name)
+                    '/media/data_cifs/andreas/pathology/gleason_training/updated_test/'+file_name)
     
     return file_name
 
@@ -147,4 +147,4 @@ def get_unique_ids():
 
 
 if __name__ == '__main__':
-    get_unique_ids()
+    copy_all_imgs()
