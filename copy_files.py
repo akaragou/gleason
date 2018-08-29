@@ -10,22 +10,37 @@ from sklearn.utils import shuffle
 
 
 def copy_train(file_name):
+
+    if file_name.split('_')[3] == 'mask' or file_name.split('_')[3]+ '_' + file_name.split('_')[4] == 'normal_mask':
+        all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'
+    else:
+        all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
-    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'+file_name, 
+    shutil.copyfile(all_data_path + file_name, 
                     '/media/data_cifs/andreas/pathology/gleason_training/train/'+file_name)
     
     return file_name
 
 def copy_val(file_name):
+
+    if file_name.split('_')[3] == 'mask' or file_name.split('_')[3]+ '_' + file_name.split('_')[4] == 'normal_mask':
+        all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'
+    else:
+        all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
-    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'+file_name, 
+    shutil.copyfile(all_data_path + file_name, 
                     '/media/data_cifs/andreas/pathology/gleason_training/val/'+file_name)
     
     return file_name
 
 def copy_test(file_name):
+
+    if file_name.split('_')[3] == 'mask' or file_name.split('_')[3]+ '_' + file_name.split('_')[4] == 'normal_mask':
+        all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'
+    else:
+        all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
-    shutil.copyfile('/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'+file_name, 
+    shutil.copyfile(all_data_path + file_name, 
                     '/media/data_cifs/andreas/pathology/gleason_training/test/'+file_name)
     
     return file_name
@@ -35,49 +50,53 @@ def copy_all_imgs():
     image_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     mask_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'
 
-    images_full_path = glob.glob(mask_data_path + '*.npy')
-    all_images = []
+    images_full_path = glob.glob(image_data_path + '*.npy')
+    mask_full_path = glob.glob(mask_data_path + '*.npy')
 
-    for i in range(len(images_full_path)):
+    all_data_path = images_full_path + mask_full_path
 
-        img_name = images_full_path[i].split('/')[-1]
-        all_images.append(img_name) 
+    all_data = []
+    for i in range(len(all_data_path)):
+        file_name = all_data_path[i].split('/')[-1]
+        all_data.append(file_name) 
 
-    train_images = []
-    val_images = []
-    test_images = []
+    train = []
+    val = []
+    test = []
 
-    val_ids = ['TMH0014A', 'TMH0014F', 'TMH0018B', 'TMH0019B', 'TMH0019J', 
-                'TMH0020C', 'TMH0069L', 'TMH0070M-2', 'moffitt15', 'moffitt6']
+    moffit_ids = ['2290506', '2290660', 'moffitt10', 'moffitt11', 'moffitt13', 'moffitt14', 'moffitt15', 'moffitt16', 'moffitt17', 
+                    'moffitt18', 'moffitt4', 'moffitt5', 'moffitt6', 'moffitt7', 'moffitt8', 'moffitt9']
 
-    test_ids = ['TMH0018E', 'TMH0019G', 'TMH0024E', 'TMH0025E', 'TMH0034D', 
-                'TMH0034G', 'TMH0069C', 'moffitt14', 'moffitt16', 'moffitt4']
+    val_ids = ['TMH0014A', 'TMH0014F', 'TMH0018F', 'TMH0019H', 'TMH0020C', 'TMH0034G', 'TMH0041D', 'TMH0069L', 'TMH0070L']
 
-    for i in range(len(all_images)):
+    test_ids = ['TMH0014I', 'TMH0018E', 'TMH0019G', 'TMH0024E', 'TMH0025E', 'TMH0034D', 'TMH0041E', 'TMH0069J', 'TMH0070K']
 
-        img_id = all_images[i].split('_')[0]
+    not_train = moffit_ids + val_ids + test_ids
 
-        if img_id in test_ids:
-            test_images.append(all_images[i])
-        elif img_id in val_ids:
-            val_images.append(all_images[i])
-        else:
-            train_images.append(all_images[i])
+    for i in range(len(all_data)):
 
+        file_id = all_data[i].split('_')[0]
+
+        if file_id in test_ids:
+            test.append(all_data[i])
+        elif file_id in val_ids:
+            val.append(all_data[i])
+        elif file_id not in not_train:
+            train.append(all_data[i])
 
     print "moving train images..."
     with concurrent.futures.ProcessPoolExecutor(16) as executor:
-        executor.map(copy_train, train_images)
+        executor.map(copy_train, train)
     print "done moving train images!"
 
     print "moving val images..."
     with concurrent.futures.ProcessPoolExecutor(16) as executor:
-        executor.map(copy_val, val_images)
+        executor.map(copy_val, val)
     print "done moving val images!"
 
     print "moving test images..."
     with concurrent.futures.ProcessPoolExecutor(16) as executor:
-        executor.map(copy_test, test_images)
+        executor.map(copy_test, test)
 
 def match(filepaths):
 

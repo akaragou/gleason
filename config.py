@@ -23,13 +23,13 @@ class GleasonConfig():
         # self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_focal_loss_2018_08_01_14_10_19_239400.ckpt') 
         self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_sigmoid_cross_entropy_2018_08_03_07_24_34_1900.ckpt') 
         
-        self.optimizer = "adam"
+        self.optimizer = "nestrov"
         self.momentum = 0.9 # if optimizer is nestrov
 
-        self.initial_learning_rate = 3e-04
+        self.initial_learning_rate = 0.001
         self.decay_learning_rate = True
-        self.decay_steps = 10000 # number of steps before decaying the learning rate
-        self.learning_rate_decay_factor = 10 
+        self.decay_steps = 20000 # number of steps before decaying the learning rate
+        self.learning_rate_decay_factor = 0.1 
         
         self.train_batch_size = 2
         self.val_batch_size = 2
@@ -41,12 +41,12 @@ class GleasonConfig():
         self.input_image_size = [512, 512, 3] # size of the input tf record image
         
         self.train_augmentations_dic = {
-                                        'rand_flip_left_right':False,
-                                        'rand_flip_top_bottom':False,
-                                        'rand_rotate':False,
-                                        'warp':False,
-                                        'distort_brightness_constrast':False,
-                                        'grayscale':False
+                                        'rand_flip_left_right':True,
+                                        'rand_flip_top_bottom':True,
+                                        'rand_rotate':True,
+                                        'warp':True,
+                                        'distort_brightness_constrast':True,
+                                        'grayscale':True
                                        }
 
         self.val_augmentations_dic = { 
@@ -59,12 +59,20 @@ class GleasonConfig():
                                       'grayscale':False
                                      }
 
-    def weighted_sigmoid_with_logits():
-        # tf.nn.sigmoid_cross_entropy_with_logits
-        pass
 
-    def weighted_cross_entropy():
-        pass
+    def weighted_cross_entropy(self, one_hot_lables, flatten_train_logits, trinary, class_weights):
+        class_weights = np.load(class_weights).astype(np.float32)
+        if trinary == 1:
+            class_weights = np.array([class_weights[0], class_weights[1], class_weights[2]*class_weights[3]*class_weights[4]])
+        tf_class_weights = tf.constant(class_weights)
+        weight_map = tf.multiply(one_hot_lables, tf_class_weights)
+        weight_map = tf.reduce_sum(weight_map, axis=1)
+
+        batch_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels = one_hot_lables, logits = flatten_train_logits)
+
+        weighted_batch_loss = tf.multiply(batch_loss, weight_map)
+
+        return weighted_batch_loss
 
     def focal_loss(self, onehot_labels, logits, alpha=0.25, gamma=2.0, name=None, scope=None):
       

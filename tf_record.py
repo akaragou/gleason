@@ -157,11 +157,7 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
     mask = tf.to_float(mask)
 
     mask = tf.expand_dims(mask,-1)
-
     image = image / 255.0
-    # image = image - 1.0
-    # image = image / 2.0
-
     image_mask = tf.concat([image, mask], axis=-1)
 
     if augmentations_dic['rand_flip_left_right']:
@@ -211,7 +207,7 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
 
       mean = 0.0
       sigma = 1.0
-      alpha = 20.0
+      alpha = 15.0
       ksize = 256
 
       x = tf.linspace(-3.0, 3.0, ksize)
@@ -242,8 +238,10 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
       mage = tf.image.rgb_to_grayscale(image)
 
     if augmentations_dic['distort_brightness_constrast']:
-      image = distort_brightness_constrast(image, ordering=random.randint())
+      image = distort_brightness_constrast(image, random.randint(0,1))
 
+    image = image - 0.5
+    image = image * 2.0
     mask = tf.to_int64(mask)
 
     return image, mask

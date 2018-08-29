@@ -104,11 +104,10 @@ def train(device, loss_name, trinary, grayscale):
             flatten_train_logits = tf.reshape(train_logits, [-1, config.output_shape])
 
             one_hot_lables = tf.one_hot(flatten_train_masks, config.output_shape, axis=-1)
-
             if loss_name == 'cross_entropy':
                 batch_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels = one_hot_lables, logits = flatten_train_logits)
-            elif loss_name == 'sigmoid_cross_entropy':
-                batch_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels = one_hot_lables, logits = flatten_train_logits)
+            elif loss_name == 'weighted_cross_entropy':
+                batch_loss = config.weighted_cross_entropy(one_hot_lables,flatten_train_logits,trinary,'train_class_weights.npy')
             elif loss_name == 'focal_loss':
                 batch_loss = config.focal_loss(one_hot_lables, flatten_train_logits)
             else:
@@ -149,7 +148,7 @@ def train(device, loss_name, trinary, grayscale):
             with slim.arg_scope(unet.unet_arg_scope()):
                 val_logits, _ = unet.Unet(val_images,
                                             is_training=False,
-                                             is_batch_norm = True,
+                                            is_batch_norm = True,
                                             num_classes = config.output_shape,
                                             scope=unet_scope)
 
@@ -243,7 +242,7 @@ def train(device, loss_name, trinary, grayscale):
                     summary_str = sess.run(summary_op)
                     summary_writer.add_summary(summary_str, step_count)
 
-                    msg = '{0}: step {1}, loss = {2:.2f} ({3:.2f} examples/sec; '\
+                    msg = '{0}: step {1}, loss = {2:.4f} ({3:.2f} examples/sec; '\
                         + '{4:.2f} sec/batch) | Train IOU = {5:.3f} | Train Accuracy = {6:.3f} '\
                         +  '| Val IOU = {7:.3f} | Val Accuracy = {8:.3f} | logdir = {9}'
                     print msg.format(
@@ -264,7 +263,7 @@ def train(device, loss_name, trinary, grayscale):
             
                 else:
                     # Training status
-                    msg = '{0}: step {1}, loss = {2:.2f} ({3:.2f} examples/sec; '\
+                    msg = '{0}: step {1}, loss = {2:.4f} ({3:.2f} examples/sec; '\
                         + '{4:.2f} sec/batch) | Train IOU =  {5:.3f} | Train Accuracy =  {6:.3f}'
                     print msg.format(datetime.datetime.now(), step_count, loss_value,
                           (config.train_batch_size / duration),
