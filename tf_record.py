@@ -46,16 +46,17 @@ def encode(img_filepath, mask_filepath):
   image = np.load(img_filepath)
   image = image[:,:,:3]
   mask = np.load(mask_filepath)
-
   # image = draw_grid(image, 50)
-
+  
   img_raw = image.tostring()
   m_raw = mask.tostring()
+  path_raw = img_filepath.encode('utf-8')
 
   example = tf.train.Example(features=tf.train.Features(feature={
 
     'image_raw': _bytes_feature(img_raw),
     'mask_raw':_bytes_feature(m_raw),
+    'file_path': _bytes_feature(path_raw),
     # 'mean':_float_feature(mean),
     # 'std':_float_feature(std)
 
@@ -139,6 +140,8 @@ def read_and_decode(filename_queue=None, img_dims=[512,512,3], size_of_batch=16,
       features={
         'image_raw': tf.FixedLenFeature([], tf.string),
         'mask_raw': tf.FixedLenFeature([], tf.string),
+        'file_path': tf.FixedLenFeature([], tf.string),
+       
         # 'mean': tf.FixedLenFeature([], tf.float64),
         # 'std': tf.FixedLenFeature([], tf.float64)
         

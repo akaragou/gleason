@@ -9,7 +9,7 @@ from tqdm import tqdm
 import csv
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-def match(filepaths, return_masks_only):
+def match(filepaths, return_masks_only=False):
 
     slides = []
     masks = []
@@ -91,25 +91,24 @@ def build_tfrecords(main_data_dir):
 
     tf_record_file_path = os.path.join(main_data_dir, 'tfrecords')
 
-    train_file_paths = glob.glob(os.path.join(main_data_dir, 'train') + '/*.npy')
-    val_file_paths =  glob.glob(os.path.join(main_data_dir, 'val') + '/*.npy')
-    test_file_paths =  glob.glob(os.path.join(main_data_dir, 'test') + '/*.npy')
+    train_file_paths = glob.glob(os.path.join(main_data_dir, 'updated_train') + '/*.npy')
+    val_file_paths =  glob.glob(os.path.join(main_data_dir, 'updated_val') + '/*.npy')
+    test_file_paths =  glob.glob(os.path.join(main_data_dir, 'updated_test') + '/*.npy')
 
-    # print "Creating Train tfrecords..."
-    # train_slides_masks = match(train_file_paths)
-    calculate_class_weights(match(train_file_paths, True), 'train')
-    # create_tf_record(os.path.join(tf_record_file_path, 'train.tfrecords'), train_slides_masks)
+    print "Creating Train tfrecords..."
+    train_slides_masks = match(train_file_paths)
+    calculate_class_weights(match(train_file_paths, True), 'updated_train')
+    create_tf_record(os.path.join(tf_record_file_path, 'train.tfrecords'), train_slides_masks)
 
-    # print
-    # print "Creating Val tfrecords..."
-    # val_slides_masks = match(val_file_paths)
-    # calculate_class_weights(match(val_file_paths, True))
-    # create_tf_record(os.path.join(tf_record_file_path, 'val.tfrecords'), val_slides_masks)
+    print
+    print "Creating Val tfrecords..."
+    val_slides_masks = match(val_file_paths)
+    create_tf_record(os.path.join(tf_record_file_path, 'val.tfrecords'), val_slides_masks)
 
-    # print   
-    # print "Creating Test tfrecords..."
-    # test_slides_masks = match(test_file_paths)
-    # create_tf_record(os.path.join(tf_record_file_path, 'test.tfrecords'), test_slides_masks)
+    print   
+    print "Creating Test tfrecords..."
+    test_slides_masks = match(test_file_paths)
+    create_tf_record(os.path.join(tf_record_file_path, 'test.tfrecords'), test_slides_masks)
     
 if __name__ == '__main__':
 
