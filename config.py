@@ -15,20 +15,20 @@ class GleasonConfig():
        
         self.train_fn =  os.path.join(self.main_dir, 'tfrecords/train.tfrecords')
         self.val_fn =  os.path.join(self.main_dir, 'tfrecords/val.tfrecords')
+
+        self.pretrain_train_fn =  os.path.join(self.main_dir, 'tfrecords/pretrain_gelason_train.tfrecords')
+        self.pretrain_val_fn =  os.path.join(self.main_dir, 'tfrecords/pretrain_gelason_val.tfrecords')
+
         self.test_fn =  os.path.join(self.main_dir, 'tfrecords/test.tfrecords')
 
         self.exp_fn = os.path.join(self.main_dir, 'tfrecords/exp.tfrecords')
-
-        # self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_cross_entropy_2018_08_01_12_02_23_6800.ckpt')
-        # self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_focal_loss_2018_08_01_14_10_19_239400.ckpt') 
-        self.test_checkpoint = os.path.join(self.checkpoint_path,'unet/unet_sigmoid_cross_entropy_2018_08_03_07_24_34_1900.ckpt') 
         
-        self.optimizer = "nestrov"
+        self.optimizer = "adam"
         self.momentum = 0.9 # if optimizer is nestrov
 
-        self.initial_learning_rate = 0.001
+        self.initial_learning_rate = 0.01
         self.decay_learning_rate = True
-        self.decay_steps = 20000 # number of steps before decaying the learning rate
+        self.decay_steps = 10000 # number of steps before decaying the learning rate
         self.learning_rate_decay_factor = 0.1 
         
         self.train_batch_size = 2
@@ -60,34 +60,37 @@ class GleasonConfig():
                                      }
 
 
-    def weighted_cross_entropy(self, one_hot_lables, flatten_train_logits, trinary, class_weights):
+    def weighted_cross_entropy(self, onehot_labels, flatten_train_logits, trinary, class_weights):
         class_weights = np.load(class_weights).astype(np.float32)
         if trinary == 1:
             class_weights = np.array([class_weights[0], class_weights[1], class_weights[2]*class_weights[3]*class_weights[4]])
         tf_class_weights = tf.constant(class_weights)
-        weight_map = tf.multiply(one_hot_lables, tf_class_weights)
+        weight_map = tf.multiply(onehot_labels, tf_class_weights)
         weight_map = tf.reduce_sum(weight_map, axis=1)
 
-        batch_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels = one_hot_lables, logits = flatten_train_logits)
+        batch_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels = onehot_labels, logits = flatten_train_logits)
 
         weighted_batch_loss = tf.multiply(batch_loss, weight_map)
 
         return weighted_batch_loss
 
-    def focal_loss(self, onehot_labels, logits, alpha=0.25, gamma=2.0, name=None, scope=None):
+    def focal_loss(self, onehot_labels, logits, trinary, class_weights, gamma=1.5, paper_alpha_t=False, name=None, scope=None):
       
-        with tf.name_scope(scope, 'focal_loss', [logits, onehot_labels]) as sc:
+        predictions = tf.nn.sigmoid(logits)
+        predictions_pt = tf.where(tf.equal(onehot_labels, 1.0), predictions, 1.0-predictions)
+        # add small value to avoid 0
+        epsilon = 1e-8
 
-
-            predictions = tf.nn.sigmoid(logits)
-            predictions_pt = tf.where(tf.equal(onehot_labels, 1), predictions, 1.-predictions)
-            # add small value to avoid 0
-            epsilon = 1e-8
+        class_weights = np.load(class_weights).astype(np.float32)
+        if trinary == 1:
+            class_weights = np.array([class_weights[0], class_weights[1], class_weights[2]*class_weights[3]*class_weights[4]])
+        alpha_t = tf.constant(class_weights)
+        if paper_alpha_t:
+            alpha_t = 0.25
             alpha_t = tf.scalar_mul(alpha, tf.ones_like(onehot_labels, dtype=tf.float32))
-            alpha_t = tf.where(tf.equal(onehot_labels, 1.0), alpha_t, 1-alpha_t)
-            losses = tf.reduce_sum(-alpha_t * tf.pow(1. - predictions_pt, gamma) * tf.log(predictions_pt+epsilon),
-                                         name=name, axis=1)
-            return losses
+            alpha_t = tf.where(tf.equal(onehot_labels, 1.0), alpha_t, 1.0-alpha_t)
+        losses = tf.reduce_sum(-alpha_t * tf.pow(1.0 - predictions_pt, gamma) * tf.log(predictions_pt+epsilon), axis=1)
+        return losses
 
     def dice_loss():
         pass
@@ -121,34 +124,6 @@ class GleasonConfig():
 
         return pixel_acc
 
-    def mean_accuracy(self, y_true, y_pred, num_clas = 5):
-
-        flatten_pred = tf.reshape(y_pred, [-1])
-        flatten_true = tf.reshape(y_true, [-1])
-
-        con = tf.concat([flatten_true, flatten_pred], axis=-1) 
-        uni_size = tf.cast(tf.size(tf.unique(con)[0]), dtype=tf.float32)
-
-        c = tf.cast(tf.confusion_matrix(flatten_true, flatten_pred, num_classes=num_clas), dtype=tf.float32)
-        intersection = tf.diag_part(c)
-
-        keys = tf.range(num_clas)
-        sorted_inter = tf.gather(intersection, tf.nn.top_k(keys, k=num_clas).indices)
-
-        mask = tf.concat([tf.cast(flatten_true, dtype=tf.int32), keys], axis=-1)
-        mask_classes, _, mask_class_weights = tf.unique_with_counts(mask)
-        reordered_mask_class_weights = tf.gather(mask_class_weights, tf.nn.top_k(mask_classes, k=num_clas).indices)
-        bool_mask = tf.not_equal(reordered_mask_class_weights, [1])
-
-        classes, _, class_weights = tf.unique_with_counts(flatten_true)
-        true_class_size = tf.cast(tf.size(tf.unique(flatten_true)[0]), dtype=tf.int32)
-        denominator = tf.cast(tf.gather(class_weights, tf.nn.top_k(classes, k=true_class_size).indices), dtype=tf.float32)  
-
-        numerator = tf.boolean_mask(sorted_inter, bool_mask)
-        mean_acc = (1/uni_size) * tf.reduce_sum((numerator / denominator))
-
-        return mean_acc
-
     def mean_IOU(self, y_true, y_pred, num_clas = 5):
 
         flatten_pred = tf.reshape(y_pred, [-1])
@@ -166,45 +141,7 @@ class GleasonConfig():
         iou = intersection / (union + 1e-8)
         mean_iou = tf.reduce_sum(iou) / uni_size
         
-        return mean_iou 
-
-    def freq_weight_IOU(self, y_true, y_pred, num_clas = 5):
-
-        flatten_pred = tf.reshape(y_pred, [-1])
-        flatten_true = tf.reshape(y_true, [-1])
-
-        con = tf.concat([flatten_true, flatten_pred], axis=-1) 
-        uni_size = tf.cast(tf.size(tf.unique(con)[0]), dtype=tf.float32)
-
-        c = tf.cast(tf.confusion_matrix(flatten_true, flatten_pred, num_classes=num_clas), dtype=tf.float32)
-        intersection = tf.diag_part(c)
-        ground_truth_set = tf.reduce_sum(c, axis=0)
-        predicted_set = tf.reduce_sum(c, axis=1)
-
-        union = ground_truth_set + predicted_set - intersection
-
-        keys = tf.range(num_clas)
-        sorted_inter = tf.gather(intersection, tf.nn.top_k(keys, k=num_clas).indices)
-        sorted_union = tf.gather(union, tf.nn.top_k(keys, k=num_clas).indices)
-
-        mask = tf.concat([tf.cast(flatten_true, dtype=tf.int32), keys], axis=-1)
-        mask_classes, _, mask_class_weights = tf.unique_with_counts(mask)
-        reordered_mask_class_weights = tf.gather(mask_class_weights, tf.nn.top_k(mask_classes, k=num_clas).indices)
-        bool_mask = tf.not_equal(reordered_mask_class_weights, [1])
-
-        classes, _, class_weights = tf.unique_with_counts(flatten_true)
-        true_class_size = tf.cast(tf.size(tf.unique(flatten_true)[0]), dtype=tf.int32)
-        reordered_class_weights = tf.cast(tf.gather(class_weights, tf.nn.top_k(classes, k=true_class_size).indices), dtype=tf.float32)  
-   
-        total_pixels = tf.cast(tf.shape(flatten_true)[0], dtype=tf.float32)
-        non_zero_inter = tf.boolean_mask(sorted_inter, bool_mask)
-        numerator = tf.multiply(reordered_class_weights,non_zero_inter)
-        denominator = tf.boolean_mask(sorted_union, bool_mask)
-     
-        weighted_iou = numerator / denominator
-        freq_weighted_iou =  tf.reduce_sum(weighted_iou) / total_pixels
-        
-        return freq_weighted_iou 
+        return mean_iou  
 
     def get_checkpoint_filename(self, model_name, run_name):
         """ 

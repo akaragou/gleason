@@ -9,39 +9,49 @@ from tqdm import tqdm
 import csv
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-def match(filepaths, return_masks_only=False):
+def match_npy(filepaths, return_masks_only=False):
 
-    slides = []
-    masks = []
+    slides = {}
+    masks = {}
 
     for i in range(len(filepaths)):
 
         file_name = filepaths[i].split('/')[-1]
-        file_type = file_name.split('_')[3]
 
-        if file_name.split('_')[3] == 'mask' or file_name.split('_')[3]+ '_' + file_name.split('_')[4] == 'normal_mask':
-            masks.append(filepaths[i])
+        if file_name.split('_')[3] == 'mask' or (file_name.split('_')[3] + '_' +file_name.split('_')[4] == 'normal_mask'):
+            if file_name.split('_')[-4] == 'anno':
+                m_key = file_name.split('_')[0] + '_' + file_name.split('_')[-3] + '_' + file_name.split('_')[-2] + '_' + file_name.split('_')[-1].split('.')[0]
+            else:
+                m_key = file_name.split('_')[0] + '_' + file_name.split('_')[-2]  + '_' + file_name.split('_')[-1].split('.')[0]
+            masks[m_key] = filepaths[i]
         else:
-            slides.append(filepaths[i])
+            if file_name.split('_')[-4] == 'anno':
+                s_key = file_name.split('_')[0] + '_' + file_name.split('_')[-3] + '_' + file_name.split('_')[-2] + '_' + file_name.split('_')[-1].split('.')[0]
+            else:
+                s_key = file_name.split('_')[0] + '_' + file_name.split('_')[-2] + '_' + file_name.split('_')[-1].split('.')[0]
+            slides[s_key] = filepaths[i]
     
-    print len(masks)
-    print len(slides)
+    print len(masks.keys())
+    print len(slides.keys())
 
     if return_masks_only:
-        return masks
+        return masks.values()
 
     matched = []
-    for i in tqdm(range(len(masks))):
-        for j in range(len(slides)):
+    for key in slides.keys():
+        matched.append((slides[key],masks[key]))
 
-            s_file_name = slides[j].split('/')[-1]
-            s_key = s_file_name.split('_')[0] + '_' + s_file_name.split('_')[-2] + '_' + s_file_name.split('_')[-1]
+    return matched
 
-            m_file_name = masks[i].split('/')[-1]
-            m_key = m_file_name.split('_')[0] + '_' + m_file_name.split('_')[-2]  + '_' + m_file_name.split('_')[-1]
 
-            if s_key == m_key:
-                matched.append((slides[j],masks[i]))
+def match_img(imgs, img_filepaths, mask_filepaths):
+
+    matched = []
+
+    for full_path in imgs:
+        file_name = full_path.split('/')[-1].split('.')[0]
+        matched.append((img_filepaths + file_name + '.jpg', mask_filepaths + file_name + '.png'))
+
     return matched
 
 def populate_dic(class_dic, mask_filepath):
@@ -86,32 +96,72 @@ def calculate_class_weights(mask_filepaths, data_set):
     print class_weights
     np.save(data_set + '_class_weights.npy', class_weights)
 
+def build_tfrecords():
 
-def build_tfrecords(main_data_dir):
+    main_data_dir = '/media/data_cifs/andreas/pathology/gleason_training/'
+    tf_record_file_path = '/media/data_cifs/andreas/pathology/gleason_training/tfrecords/'
 
-    tf_record_file_path = os.path.join(main_data_dir, 'tfrecords')
+    train_file_paths = glob.glob(os.path.join(main_data_dir, 'train') + '/*.npy')
+    val_file_paths =  glob.glob(os.path.join(main_data_dir, 'val') + '/*.npy')
+    test_file_paths =  glob.glob(os.path.join(main_data_dir, 'test') + '/*.npy')
 
-    train_file_paths = glob.glob(os.path.join(main_data_dir, 'updated_train') + '/*.npy')
-    val_file_paths =  glob.glob(os.path.join(main_data_dir, 'updated_val') + '/*.npy')
-    test_file_paths =  glob.glob(os.path.join(main_data_dir, 'updated_test') + '/*.npy')
 
+    train_slides_masks = match_npy(train_file_paths)
+    print len(train_slides_masks)
     print "Creating Train tfrecords..."
-    train_slides_masks = match(train_file_paths)
-    calculate_class_weights(match(train_file_paths, True), 'updated_train')
+    calculate_class_weights(match_npy(train_file_paths, True), 'train')
     create_tf_record(os.path.join(tf_record_file_path, 'train.tfrecords'), train_slides_masks)
 
     print
     print "Creating Val tfrecords..."
-    val_slides_masks = match(val_file_paths)
+    val_slides_masks = match_npy(val_file_paths)
+    print len(val_slides_masks)
     create_tf_record(os.path.join(tf_record_file_path, 'val.tfrecords'), val_slides_masks)
 
     print   
     print "Creating Test tfrecords..."
-    test_slides_masks = match(test_file_paths)
+    test_slides_masks = match_npy(test_file_paths)
+    print len(test_slides_masks)
     create_tf_record(os.path.join(tf_record_file_path, 'test.tfrecords'), test_slides_masks)
-    
+
+def build_tfrecords_gleason_pretraining():
+
+    main_data_dir = '/media/data_cifs/andreas/pathology/gleason_training/'      
+    tf_record_file_path = '/media/data_cifs/andreas/pathology/gleason_training/tfrecords/'
+
+    train_file_paths = glob.glob(os.path.join(main_data_dir, 'pretraining_gleason_train') + '/*.npy')
+    val_file_paths =  glob.glob(os.path.join(main_data_dir, 'pretraining_gleason_val') + '/*.npy')
+
+    print "Creating Train tfrecords..."
+    train_slides_masks = match_npy(train_file_paths)
+    print len(train_slides_masks)
+    create_tf_record(os.path.join(tf_record_file_path, 'pretraining_gleason_train.tfrecords'), train_slides_masks)
+
+    print
+    print "Creating Val tfrecords..."
+    val_slides_masks = match_npy(val_file_paths)
+    print len(val_slides_masks)
+    create_tf_record(os.path.join(tf_record_file_path, 'pretraining_gleason_val.tfrecords'), val_slides_masks)
+
+def build_tfrecords_coco_pretraining():
+
+    main_data_dir = '/media/data_cifs/andreas'      
+    tf_record_file_path = '/media/data_cifs/andreas/pathology/gleason_training/tfrecords/'
+
+    train_imgs = glob.glob(os.path.join(main_data_dir, 'coco_train2017') + '/*.jpg')
+    val_imgs = glob.glob(os.path.join(main_data_dir, 'coco_val2017') + '/*.jpg')
+
+    print "Creating Train tfrecords..."
+    train_slides_masks = match_img(train_imgs, os.path.join(main_data_dir, 'coco_train2017/'), os.path.join(main_data_dir, 'coco_stuffthingmaps_trainval2017/train2017/'))
+    create_tf_record(os.path.join(tf_record_file_path, 'pretraining_coco_train.tfrecords'), train_slides_masks, file_type='img')
+
+    print
+    print "Creating Val tfrecords..."
+    val_slides_masks = match_img(val_imgs, os.path.join(main_data_dir, 'coco_val2017/'), os.path.join(main_data_dir, 'coco_stuffthingmaps_trainval2017/val2017/'))
+    create_tf_record(os.path.join(tf_record_file_path, 'pretraining_coco_val.tfrecords'), val_slides_masks, file_type='img')
+
 if __name__ == '__main__':
 
-    main_data_dir = '/media/data_cifs/andreas/pathology/gleason_training'
-    build_tfrecords(main_data_dir)
+    build_tfrecords_gleason_pretraining()
+    # build_tfrecords_coco_pretraining()
     

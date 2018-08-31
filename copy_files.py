@@ -17,7 +17,7 @@ def copy_train(file_name):
         all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
     shutil.copyfile(all_data_path + file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/updated_train/'+file_name)
+                    '/media/data_cifs/andreas/pathology/gleason_training/train/'+file_name)
     
     return file_name
 
@@ -29,7 +29,7 @@ def copy_val(file_name):
         all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
     shutil.copyfile(all_data_path + file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/updated_val/'+file_name)
+                    '/media/data_cifs/andreas/pathology/gleason_training/val/'+file_name)
     
     return file_name
 
@@ -41,7 +41,7 @@ def copy_test(file_name):
         all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
     
     shutil.copyfile(all_data_path + file_name, 
-                    '/media/data_cifs/andreas/pathology/gleason_training/updated_test/'+file_name)
+                    '/media/data_cifs/andreas/pathology/gleason_training/test/'+file_name)
     
     return file_name
 
@@ -77,11 +77,11 @@ def copy_all_imgs():
 
         file_id = all_data[i].split('_')[0]
 
-        if file_id in test_ids:
-            test.append(all_data[i])
-        elif file_id in val_ids:
-            val.append(all_data[i])
-        elif file_id not in not_train:
+        # if file_id in test_ids:
+        #     test.append(all_data[i])
+        # elif file_id in val_ids:
+        #     val.append(all_data[i])
+        if file_id not in not_train:
             train.append(all_data[i])
 
     print "moving train images..."
@@ -89,14 +89,14 @@ def copy_all_imgs():
         executor.map(copy_train, train)
     print "done moving train images!"
 
-    print "moving val images..."
-    with concurrent.futures.ProcessPoolExecutor(16) as executor:
-        executor.map(copy_val, val)
-    print "done moving val images!"
+    # print "moving val images..."
+    # with concurrent.futures.ProcessPoolExecutor(16) as executor:
+    #     executor.map(copy_val, val)
+    # print "done moving val images!"
 
-    print "moving test images..."
-    with concurrent.futures.ProcessPoolExecutor(16) as executor:
-        executor.map(copy_test, test)
+    # print "moving test images..."
+    # with concurrent.futures.ProcessPoolExecutor(16) as executor:
+    #     executor.map(copy_test, test)
 
 def match(filepaths):
 
@@ -128,6 +128,66 @@ def match(filepaths):
 
     return matched
 
+def copy_pretrain_train(file_name):
+
+    if file_name.split('_')[3] == 'mask' or file_name.split('_')[3]+ '_' + file_name.split('_')[4] == 'normal_mask':
+        all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'
+    else:
+        all_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
+    
+    shutil.copyfile(all_data_path + file_name, 
+                    '/media/data_cifs/andreas/pathology/gleason_training/pretraining_gleason_train/' + file_name)
+    
+    return file_name
+
+def copy_pretrain_train(file_name):
+    
+    shutil.copyfile( '/media/data_cifs/andreas/pathology/gleason_training/pretraining_gleason_train/' + file_name, 
+                    '/media/data_cifs/andreas/pathology/gleason_training/pretraining_gleason_train/' + file_name)
+    
+    return file_name
+
+
+def copy_pretrain_val(file_name):
+
+    shutil.copyfile('/media/data_cifs/andreas/pathology/gleason_training/pretraining_gleason_train/' + file_name, 
+                    '/media/data_cifs/andreas/pathology/gleason_training/pretraining_gleason_train/' + file_name)
+    
+    return file_name
+
+def copy_all_pretraining_imgs():
+
+    image_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/imgs/'
+    mask_data_path = '/media/data_cifs/andreas/pathology/miriam/training_crops/masks/'
+
+    images_full_path = glob.glob(image_data_path + '*.npy')
+    mask_full_path = glob.glob(mask_data_path + '*.npy')
+
+    all_data_path = images_full_path + mask_full_path
+
+    all_data = []
+    for i in range(len(all_data_path)):
+        file_name = all_data_path[i].split('/')[-1]
+        all_data.append(file_name) 
+
+    train = []
+
+    moffit_ids = ['2290506', '2290660',  'moffitt11','moffitt13', 'moffitt14', 'moffitt15', 'moffitt17', 
+                    'moffitt18', 'moffitt4', 'moffitt5', 'moffitt6', 'moffitt7', 'moffitt8', 'moffitt9']
+
+    for i in range(len(all_data)):
+
+        file_id = all_data[i].split('_')[0]
+
+        if file_id in moffit_ids:
+            train.append(all_data[i])
+    
+    print "moving train images..."
+    with concurrent.futures.ProcessPoolExecutor(32) as executor:
+        executor.map(copy_pretrain_train, train)
+    print "done moving train images!"
+
+
 def get_unique_ids():
 
     data_path = '/media/data_cifs/andreas/pathology/gleason_training/test/'
@@ -144,6 +204,7 @@ def get_unique_ids():
 
     for i_id in img_ids:
         print i_id
+
 
 
 if __name__ == '__main__':

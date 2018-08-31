@@ -77,7 +77,7 @@ def test_Unet(device, trinary, grayscale, checkpoint):
     else:
         config.output_shape = 5
 
-    test_images, test_masks  = read_and_decode(filename_queue = test_filename_queue,
+    test_images, test_masks, f = read_and_decode(filename_queue = test_filename_queue,
                                                      img_dims = config.input_image_size,
                                                      size_of_batch =  1,
                                                      augmentations_dic = config.val_augmentations_dic,
@@ -98,7 +98,7 @@ def test_Unet(device, trinary, grayscale, checkpoint):
     iou = config.mean_IOU(test_scores, test_masks)
     accuracy = config.pixel_accuracy(test_scores, test_masks)
 
-    c_f = tf.confusion_matrix(tf.reshape(test_masks, [-1]),tf.reshape(test_scores, [-1]),num_classes=5)
+    c_f = tf.confusion_matrix(tf.reshape(test_masks, [-1]),tf.reshape(test_scores, [-1]),num_classes=config.output_shape)
 
     restorer = tf.train.Saver()
     print "Variables stored in checkpoint:"
@@ -116,15 +116,14 @@ def test_Unet(device, trinary, grayscale, checkpoint):
         test_preds = []
         total_iou = 0
         total_accuracy = 0
-        confusion_matrix = [[0 for _ in range(5)] for _ in range(5)]
+        confusion_matrix = [[0 for _ in range(config.output_shape)] for _ in range(config.output_shape)]
 
         try:
 
             while not coord.should_stop():
                 
                 # gathering results for models performance and mask predictions
-                np_accuracy, np_iou, np_image, np_mask, np_predicted_mask = sess.run([accuracy, iou, test_images, test_masks, test_scores])
-                np_c_f = sess.run(c_f)
+                np_accuracy, np_iou, np_image, np_mask, np_predicted_mask, np_c_f = sess.run([accuracy, iou, test_images, test_masks, test_scores, c_f])
 
                 print "count: {0} || Mean IOU: {1} || Pixel Accuracy: {2}".format(count, np_iou, np_accuracy)
                 count += 1 
@@ -155,7 +154,7 @@ def test_Unet(device, trinary, grayscale, checkpoint):
             coord.request_stop()  
         coord.join(threads)
 
-        np.save('results_cf2.npy',confusion_matrix)
+        np.save('results.npy',confusion_matrix)
 
 if __name__ == '__main__':
 
@@ -167,8 +166,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_Unet(args.device, args.trinary, args.grayscale, args.checkpoint)
-    cf = np.load('results_cf2.npy')
-    plot_confusion_matrix(cf, ['Background', 'Benign', 'Gleason 3', 'Gleason 4', 'Gleason 5'], normalize=True)
+     # cf = np.load('results.npy')
+    # plot_confusion_matrix(cf, ['Background', 'Benign', 'Gleason 3', 'Gleason 4', 'Gleason 5'], normalize=True)
+    # plot_confusion_matrix(cf, ['Background', 'Benign', 'Malignant'], normalize=True)
 
 
 

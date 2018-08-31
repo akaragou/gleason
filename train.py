@@ -20,12 +20,12 @@ def train(device, loss_name, trinary, grayscale):
 
     # load training data
     train_filename_queue = tf.train.string_input_producer(
-    [config.train_fn], num_epochs=config.num_train_epochs)
+    [config.pretrain_train_fn], num_epochs=config.num_train_epochs)
     # load validation data
     val_filename_queue = tf.train.string_input_producer(
-    [config.val_fn], num_epochs=config.num_train_epochs)
+    [config.pretrain_val_fn], num_epochs=config.num_train_epochs)
 
-    model_train_name = 'unet'
+    model_train_name = 'pretraining_gleason_unet'
     name = loss_name
     
     if trinary == 1:
@@ -59,14 +59,14 @@ def train(device, loss_name, trinary, grayscale):
     else:
         config.output_shape = 5
 
-    train_images, train_masks = read_and_decode(filename_queue = train_filename_queue,
+    train_images, train_masks, _ = read_and_decode(filename_queue = train_filename_queue,
                                                 img_dims = config.input_image_size,
                                                 size_of_batch = config.train_batch_size,
                                                 augmentations_dic = config.train_augmentations_dic,
                                                 num_of_threads = 2,
                                                 shuffle = True)
     
-    val_images, val_masks  = read_and_decode(filename_queue = val_filename_queue,
+    val_images, val_masks, _  = read_and_decode(filename_queue = val_filename_queue,
                                              img_dims = config.input_image_size,
                                              size_of_batch =  config.val_batch_size,
                                              augmentations_dic = config.val_augmentations_dic,
@@ -107,9 +107,9 @@ def train(device, loss_name, trinary, grayscale):
             if loss_name == 'cross_entropy':
                 batch_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels = one_hot_lables, logits = flatten_train_logits)
             elif loss_name == 'weighted_cross_entropy':
-                batch_loss = config.weighted_cross_entropy(one_hot_lables,flatten_train_logits,trinary,'train_class_weights.npy')
+                batch_loss = config.weighted_cross_entropy(one_hot_lables,flatten_train_logits,trinary,'updated_train_class_weights.npy')
             elif loss_name == 'focal_loss':
-                batch_loss = config.focal_loss(one_hot_lables, flatten_train_logits)
+                batch_loss = config.focal_loss(one_hot_lables, flatten_train_logits,trinary,'updated_train_class_weights.npy')
             else:
                 raise Exception("Not known loss! options are cross entropy and focal loss")    
             
@@ -174,6 +174,8 @@ def train(device, loss_name, trinary, grayscale):
         val_masks = tf.cast(val_masks, dtype=tf.float32)
 
     with tf.name_scope('train_data'):
+        train_images = train_images / 2.0
+        train_images = train_images + 0.5
         tf.summary.image('train images', train_images, max_outputs=1)
         tf.summary.image('train masks', train_masks, max_outputs=1)
 
@@ -185,6 +187,8 @@ def train(device, loss_name, trinary, grayscale):
         tf.summary.image('train pred mask', train_pred_mask, max_outputs=1)
 
     with tf.name_scope('val_data'):
+        val_images = val_images / 2.0
+        val_images = val_images + 0.5
         tf.summary.image('validation images', val_images, max_outputs=1)
         tf.summary.image('validation masks', val_masks, max_outputs=1)
 
@@ -195,9 +199,9 @@ def train(device, loss_name, trinary, grayscale):
 
         tf.summary.image('val pred mask', val_pred_mask, max_outputs=1)
 
-        saver = tf.train.Saver(slim.get_model_variables(), max_to_keep=100)
-       
-        summary_op = tf.summary.merge_all()
+    saver = tf.train.Saver(slim.get_model_variables(), max_to_keep=100)
+   
+    summary_op = tf.summary.merge_all()
 
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 

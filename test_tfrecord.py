@@ -19,10 +19,10 @@ def test_tf_record(device):
 
     # load training data
     filename_queue = tf.train.string_input_producer(
-    [config.exp_fn], num_epochs=4)
+    [config.val_fn], num_epochs=4)
    
  
-    train_images, train_masks = read_and_decode(filename_queue = filename_queue,
+    train_images, train_masks, _ = read_and_decode(filename_queue = filename_queue,
                                                 img_dims = config.input_image_size,
                                                 size_of_batch = 1,
                                                 augmentations_dic = config.train_augmentations_dic,
@@ -30,7 +30,7 @@ def test_tf_record(device):
                                                 shuffle = False)
 
     
-    mean_iou = config.accuracy(train_masks, train_masks)
+    mean_iou = config.pixel_accuracy(train_masks, train_masks)
     # mean = 0.0
     # sigma = 1.0
     # x = tf.linspace(-1.0, 1.0, 100)
@@ -92,4 +92,4 @@ def test(device):
         print sess.run(threshold)
     
 if __name__ == '__main__':
-    test(2)
+    test_tf_record(0)
