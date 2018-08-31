@@ -30,9 +30,6 @@ def match_npy(filepaths, return_masks_only=False):
             else:
                 s_key = file_name.split('_')[0] + '_' + file_name.split('_')[-2] + '_' + file_name.split('_')[-1].split('.')[0]
             slides[s_key] = filepaths[i]
-    
-    print len(masks.keys())
-    print len(slides.keys())
 
     if return_masks_only:
         return masks.values()
@@ -107,21 +104,16 @@ def build_tfrecords():
 
 
     train_slides_masks = match_npy(train_file_paths)
-    print len(train_slides_masks)
     print "Creating Train tfrecords..."
     calculate_class_weights(match_npy(train_file_paths, True), 'train')
     create_tf_record(os.path.join(tf_record_file_path, 'train.tfrecords'), train_slides_masks)
 
-    print
     print "Creating Val tfrecords..."
     val_slides_masks = match_npy(val_file_paths)
-    print len(val_slides_masks)
     create_tf_record(os.path.join(tf_record_file_path, 'val.tfrecords'), val_slides_masks)
-
-    print   
+ 
     print "Creating Test tfrecords..."
     test_slides_masks = match_npy(test_file_paths)
-    print len(test_slides_masks)
     create_tf_record(os.path.join(tf_record_file_path, 'test.tfrecords'), test_slides_masks)
 
 def build_tfrecords_gleason_pretraining():
@@ -134,13 +126,10 @@ def build_tfrecords_gleason_pretraining():
 
     print "Creating Train tfrecords..."
     train_slides_masks = match_npy(train_file_paths)
-    print len(train_slides_masks)
     create_tf_record(os.path.join(tf_record_file_path, 'pretraining_gleason_train.tfrecords'), train_slides_masks)
 
-    print
     print "Creating Val tfrecords..."
     val_slides_masks = match_npy(val_file_paths)
-    print len(val_slides_masks)
     create_tf_record(os.path.join(tf_record_file_path, 'pretraining_gleason_val.tfrecords'), val_slides_masks)
 
 def build_tfrecords_coco_pretraining():
@@ -155,7 +144,6 @@ def build_tfrecords_coco_pretraining():
     train_slides_masks = match_img(train_imgs, os.path.join(main_data_dir, 'coco_train2017/'), os.path.join(main_data_dir, 'coco_stuffthingmaps_trainval2017/train2017/'))
     create_tf_record(os.path.join(tf_record_file_path, 'pretraining_coco_train.tfrecords'), train_slides_masks, file_type='img')
 
-    print
     print "Creating Val tfrecords..."
     val_slides_masks = match_img(val_imgs, os.path.join(main_data_dir, 'coco_val2017/'), os.path.join(main_data_dir, 'coco_stuffthingmaps_trainval2017/val2017/'))
     create_tf_record(os.path.join(tf_record_file_path, 'pretraining_coco_val.tfrecords'), val_slides_masks, file_type='img')
