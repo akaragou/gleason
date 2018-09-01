@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import glob
 import numpy as np
 import os
-from tf_record import create_tf_record
+from tf_record import create_tf_record_npy, create_tf_record_img
 from tqdm import tqdm
 import csv
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -106,15 +106,15 @@ def build_tfrecords():
     train_slides_masks = match_npy(train_file_paths)
     print "Creating Train tfrecords..."
     calculate_class_weights(match_npy(train_file_paths, True), 'train')
-    create_tf_record(os.path.join(tf_record_file_path, 'train.tfrecords'), train_slides_masks)
+    create_tf_record_npy(os.path.join(tf_record_file_path, 'train.tfrecords'), train_slides_masks)
 
     print "Creating Val tfrecords..."
     val_slides_masks = match_npy(val_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'val.tfrecords'), val_slides_masks)
+    create_tf_record_npy(os.path.join(tf_record_file_path, 'val.tfrecords'), val_slides_masks)
  
     print "Creating Test tfrecords..."
     test_slides_masks = match_npy(test_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'test.tfrecords'), test_slides_masks)
+    create_tf_record_npy(os.path.join(tf_record_file_path, 'test.tfrecords'), test_slides_masks)
 
 def build_tfrecords_gleason_pretraining():
 
@@ -126,11 +126,11 @@ def build_tfrecords_gleason_pretraining():
 
     print "Creating Train tfrecords..."
     train_slides_masks = match_npy(train_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'pretraining_gleason_train.tfrecords'), train_slides_masks)
+    create_tf_record_npy(os.path.join(tf_record_file_path, 'pretraining_gleason_train.tfrecords'), train_slides_masks)
 
     print "Creating Val tfrecords..."
     val_slides_masks = match_npy(val_file_paths)
-    create_tf_record(os.path.join(tf_record_file_path, 'pretraining_gleason_val.tfrecords'), val_slides_masks)
+    create_tf_record_npy(os.path.join(tf_record_file_path, 'pretraining_gleason_val.tfrecords'), val_slides_masks)
 
 def build_tfrecords_coco_pretraining():
 
@@ -142,14 +142,15 @@ def build_tfrecords_coco_pretraining():
 
     print "Creating Train tfrecords..."
     train_slides_masks = match_img(train_imgs, os.path.join(main_data_dir, 'coco_train2017/'), os.path.join(main_data_dir, 'coco_stuffthingmaps_trainval2017/train2017/'))
-    create_tf_record(os.path.join(tf_record_file_path, 'pretraining_coco_train.tfrecords'), train_slides_masks, file_type='img')
+    create_tf_record_img(os.path.join(tf_record_file_path, 'pretraining_coco_train.tfrecords'), train_slides_masks)
 
     print "Creating Val tfrecords..."
     val_slides_masks = match_img(val_imgs, os.path.join(main_data_dir, 'coco_val2017/'), os.path.join(main_data_dir, 'coco_stuffthingmaps_trainval2017/val2017/'))
-    create_tf_record(os.path.join(tf_record_file_path, 'pretraining_coco_val.tfrecords'), val_slides_masks, file_type='img')
+    create_tf_record_img(os.path.join(tf_record_file_path, 'pretraining_coco_val.tfrecords'), val_slides_masks)
 
 if __name__ == '__main__':
 
+    build_tfrecords()
     build_tfrecords_gleason_pretraining()
-    # build_tfrecords_coco_pretraining()
+    build_tfrecords_coco_pretraining()
     

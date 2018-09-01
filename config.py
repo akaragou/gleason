@@ -16,8 +16,8 @@ class GleasonConfig():
         self.train_fn =  os.path.join(self.main_dir, 'tfrecords/train.tfrecords')
         self.val_fn =  os.path.join(self.main_dir, 'tfrecords/val.tfrecords')
 
-        self.pretrain_train_fn =  os.path.join(self.main_dir, 'tfrecords/pretrain_gelason_train.tfrecords')
-        self.pretrain_val_fn =  os.path.join(self.main_dir, 'tfrecords/pretrain_gelason_val.tfrecords')
+        self.pretrain_train_fn =  os.path.join(self.main_dir, 'tfrecords/pretraining_gleason_train.tfrecords')
+        self.pretrain_val_fn =  os.path.join(self.main_dir, 'tfrecords/pretraining_gleason_val.tfrecords')
 
         self.test_fn =  os.path.join(self.main_dir, 'tfrecords/test.tfrecords')
 
@@ -61,6 +61,7 @@ class GleasonConfig():
 
 
     def weighted_cross_entropy(self, onehot_labels, flatten_train_logits, trinary, class_weights):
+
         class_weights = np.load(class_weights).astype(np.float32)
         if trinary == 1:
             class_weights = np.array([class_weights[0], class_weights[1], class_weights[2]*class_weights[3]*class_weights[4]])
@@ -73,6 +74,31 @@ class GleasonConfig():
         weighted_batch_loss = tf.multiply(batch_loss, weight_map)
 
         return weighted_batch_loss
+
+
+    # def weighted_cross_entropy(self, onehot_labels, flatten_train_logits, trinary, class_weights):
+
+    #     ground_truth = onehot_labels
+    #     ones_count = tf.cast(tf.equal(scores, 1), dtype=tf.float32)
+    #     twos_count = tf.cast(tf.equal(scores, 2), dtype=tf.float32)
+    #     threes_count = tf.cast(tf.equal(scores, 3), dtype=tf.float32)
+    #     fours_count = tf.cast(tf.equal(scores, 4), dtype=tf.float32)
+
+
+    #     class_weights = np.load(class_weights).astype(np.float32)
+    #     if trinary == 1:
+    #         class_weights = np.array([class_weights[0], class_weights[1], class_weights[2]*class_weights[3]*class_weights[4]])
+    #     else:
+    #         tf.equal()
+    #     tf_class_weights = tf.constant(class_weights)
+    #     weight_map = tf.multiply(onehot_labels, tf_class_weights)
+    #     weight_map = tf.reduce_sum(weight_map, axis=1)
+
+    #     batch_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels = onehot_labels, logits = flatten_train_logits)
+
+    #     weighted_batch_loss = tf.multiply(batch_loss, weight_map)
+
+    #     return weighted_batch_loss
 
     def focal_loss(self, onehot_labels, logits, trinary, class_weights, gamma=1.5, paper_alpha_t=False, name=None, scope=None):
       

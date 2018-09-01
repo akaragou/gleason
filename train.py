@@ -173,9 +173,7 @@ def train(device, loss_name, trinary, grayscale):
         train_masks = tf.cast(train_masks, dtype=tf.float32)
         val_masks = tf.cast(val_masks, dtype=tf.float32)
 
-    with tf.name_scope('train_data'):
-        train_images = train_images / 2.0
-        train_images = train_images + 0.5
+    with tf.name_scope('train_data'):   
         tf.summary.image('train images', train_images, max_outputs=1)
         tf.summary.image('train masks', train_masks, max_outputs=1)
 
@@ -187,8 +185,6 @@ def train(device, loss_name, trinary, grayscale):
         tf.summary.image('train pred mask', train_pred_mask, max_outputs=1)
 
     with tf.name_scope('val_data'):
-        val_images = val_images / 2.0
-        val_images = val_images + 0.5
         tf.summary.image('validation images', val_images, max_outputs=1)
         tf.summary.image('validation masks', val_masks, max_outputs=1)
 
@@ -258,7 +254,7 @@ def train(device, loss_name, trinary, grayscale):
 
                     # Save the model checkpoint if it's the best yet
                     if val_acc_total >= max_val_acc:
-                        file_name = 'unet_{0}_{1}'.format(dt_stamp, step_count)
+                        file_name = 'pretraining_gleason_unet_{0}_{1}'.format(dt_stamp, step_count)
                         saver.save(
                             sess,
                             config.get_checkpoint_filename(model_train_name, file_name))

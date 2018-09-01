@@ -58,8 +58,6 @@ def encode_npy(img_filepath, mask_filepath):
     'image_raw': _bytes_feature(img_raw),
     'mask_raw':_bytes_feature(m_raw),
     'file_path': _bytes_feature(path_raw),
-    # 'mean':_float_feature(mean),
-    # 'std':_float_feature(std)
 
   }))
 
@@ -80,8 +78,6 @@ def encode_img(img_filepath, mask_filepath):
     'image_raw': _bytes_feature(img_raw),
     'mask_raw':_bytes_feature(m_raw),
     'file_path': _bytes_feature(path_raw),
-    # 'mean':_float_feature(mean),
-    # 'std':_float_feature(std)
 
   }))
 
@@ -96,42 +92,42 @@ def distort_brightness_constrast(image, ordering=0):
     image = tf.image.random_brightness(image, max_delta=32. / 255.)
   return tf.clip_by_value(image, 0.0, 1.0)
 
-def create_tf_record(tfrecords_filename, images_masks_stats, file_type='npy'):
+def create_tf_record_npy(tfrecords_filename, images_masks_stats):
 
   writer = tf.python_io.TFRecordWriter(tfrecords_filename)
-  # for i in tqdm(range(len(images_masks_stats))):
-
-  #     image = np.load(images_masks_stats[i][0])
-  #     mask = np.load(images_masks_stats[i][1])
-
-  #     image = draw_grid(image, 50)
-
-  #     if is_img_resize:              
-  #         image = misc.imresize(image, (256, 256))
-  #         mask = misc.imresize(mask, (256, 256))
-
-  #     img_raw = image.tostring()
-  #     m_raw = mask.tostring()
-
-  #     example = tf.train.Example(features=tf.train.Features(feature={
-  
-  #             'image_raw': _bytes_feature(img_raw),
-  #             'mask_raw':_bytes_feature(m_raw),
-
-  #            }))
-
-  #     writer.write(example.SerializeToString())
-
-  # writer.close()
-
   with ProcessPoolExecutor(16) as executor:
 
-    if file_type == 'npy':
-      futures = [executor.submit(encode_npy, i, m) for i, m in images_masks_stats]
-    elif file_type == 'img':
-      futures = [executor.submit(encode_img, i, m) for i, m in images_masks_stats]
-    else:
-      raise Exception('file_type not available! options are: npy and img')
+    futures = [executor.submit(encode_npy, i, m) for i, m in images_masks_stats]
+
+    kwargs = {
+        'total': len(futures),
+        'unit': 'it',
+        'unit_scale': True,
+        'leave': True
+    }
+
+    for f in tqdm(as_completed(futures), **kwargs):
+        pass
+    print "Done loading futures!"
+    print "Writing examples..."
+    for i in tqdm(range(len(futures))):
+      try:
+          example = futures[i].result()
+          writer.write(example.SerializeToString())
+      except Exception as e:
+          print "Failed to write example!"
+
+  print '-' * 90
+  print 'Generated tfrecord at %s' % tfrecords_filename
+  print '-' * 90
+
+
+def create_tf_record_img(tfrecords_filename, images_masks_stats):
+
+  writer = tf.python_io.TFRecordWriter(tfrecords_filename)
+  with ProcessPoolExecutor(16) as executor:
+
+    futures = [executor.submit(encode_img, i, m) for i, m in images_masks_stats]
 
     kwargs = {
         'total': len(futures),
