@@ -225,9 +225,9 @@ def copy_imgs():
     test = []
 
     test_ids = ['TMH0069B', 'TMH0070M-1', 'TMH0070H', 'TMH0071J',  'TMH0069J', 'TMH0068K-1', 'TMH0068C-1', 'moffitt16', 'moffitt14',
-                 'TMH0041A', 'TMH0045K', 'TMH0011I', 'TMH0018G', 'TMH0023A', 'TMH0026A', 'TMH0029A', 'TMH0017A']
+                 'TMH0041A', 'TMH0045K', 'TMH0011I', 'TMH0018G', 'TMH0023A', 'TMH0026A', 'TMH0029A', 'TMH0017A', '7-B12']
 
-    val_ids = ['TMH0070K', 'TMH0069D', 'moffitt10', 'moffitt17', 'TMH0041C', 'TMH0018E', 'TMH0023B', 'TMH0026B']
+    val_ids = ['TMH0070K', 'TMH0069D', '5-A27', 'moffitt17', 'TMH0041C', 'TMH0018E', 'TMH0023B', 'TMH0026B']
 
     for i in range(len(all_data)):
 
@@ -241,31 +241,31 @@ def copy_imgs():
             train.append(all_data[i])
 
     print "copying train..."
-    with concurrent.futures.ProcessPoolExecutor(21) as executor:
+    with concurrent.futures.ProcessPoolExecutor(32) as executor:
         executor.map(copy_train_patches, train)
     print "done copying train!"
 
     print "copying val..."
-    with concurrent.futures.ProcessPoolExecutor(21) as executor:
+    with concurrent.futures.ProcessPoolExecutor(32) as executor:
         executor.map(copy_val_patches, val)
     print "done copying val!"
 
     print "copying test..."
-    with concurrent.futures.ProcessPoolExecutor(21) as executor:
+    with concurrent.futures.ProcessPoolExecutor(32) as executor:
         executor.map(copy_test_patches, test)
     print "done copying test!"
 
 
 def move_patches(file_name):
 
-    shutil.move('/media/data_cifs/andreas/pathology/gleason_training_patches/all_patches/' + file_name, 
-                '/media/data_cifs/andreas/pathology/gleason_training_patches/old_all_patches/' + file_name)
+    shutil.copyfile('/media/data_cifs/andreas/pathology/gleason_training_patches/pretrain_patches/' + file_name, 
+                '/media/data_cifs/andreas/pathology/gleason_training_patches/all_patches/' + file_name)
     
     return file_name
 
 def move_imgs():
 
-    image_data_path = '/media/data_cifs/andreas/pathology/gleason_training_patches/all_patches/'
+    image_data_path = '/media/data_cifs/andreas/pathology/gleason_training_patches/pretrain_patches/'
 
     images_full_path = glob.glob(image_data_path + '*.png')
 
@@ -274,18 +274,9 @@ def move_imgs():
         file_name = images_full_path[i].split('/')[-1]
         all_data.append(file_name) 
 
-    imgs_to_move = []
-
-    mv_ids = ['moffitt4', 'moffitt5', 'moffitt6', 'moffitt7', 'moffitt8', 'moffitt9', 'moffitt10', 'moffitt11']
-
-    for i in range(len(all_data)):
-
-        if all_data[i].split('_')[1] in mv_ids or all_data[i].split('_')[2] in mv_ids:
-            imgs_to_move.append(all_data[i])
-
     print "moving..."
     with concurrent.futures.ProcessPoolExecutor(21) as executor:
-        executor.map(move_patches, imgs_to_move)
+        executor.map(move_patches, all_data)
     print "done moving!"
 
 def get_unique_ids():
@@ -309,4 +300,4 @@ def get_unique_ids():
         print i_id
 
 if __name__ == '__main__':
-    move_imgs()
+    copy_imgs()

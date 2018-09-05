@@ -18,8 +18,8 @@ import math
 VGG_MEAN = [103.939, 116.779, 123.68]
 PI = tf.constant(math.pi)
 
-GLEASON_MEAN = 141.3
-GLEASON_STD = 28.8
+GLEASON_MEAN = [167.312, 135.0144, 187.337]
+GLEASON_STD = [22.496, 27.958, 25.337]
 
 def _bytes_feature(value):
   return tf.train.Feature(bytes_list = tf.train.BytesList(value=[value]))
@@ -44,10 +44,20 @@ def draw_grid(im, grid_size):
      
   return im
 
-def normalize(img):
-  img_scaled = img * 255.0
-  img_scaled = (img_scaled - GLEASON_MEAN) / GLEASON_STD  
-  return img_scaled
+def normalize(image_rgb):
+
+  image_rgb_scaled = image_rgb * 255.0
+  red, green, blue = tf.split(num_or_size_splits=3, axis=3, value=image_rgb_scaled)
+  assert red.get_shape().as_list()[1:] == [224, 224, 1]
+  assert green.get_shape().as_list()[1:] == [224, 224, 1]
+  assert blue.get_shape().as_list()[1:] == [224, 224, 1]
+  image_bgr = tf.concat(values = [
+      (blue - GLEASON_MEAN[0]) / GLEASON_STD[0],
+      (green - GLEASON_MEAN[1]) / GLEASON_STD[1],
+      (red - GLEASON_MEAN[2]) / GLEASON_STD[2]
+      ], axis=3)
+  assert image_bgr.get_shape().as_list()[1:] == [224, 224, 3], image_bgr.get_shape().as_list()
+  return image_bgr
 
 def tfrecord2metafilename(tfrecord_filename):
   """

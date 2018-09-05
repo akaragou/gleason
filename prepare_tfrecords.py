@@ -13,14 +13,19 @@ from tqdm import tqdm
 import random
 
 def compute_mean(file):
-    grey_img = misc.imread(file, mode='L')
-    mean = np.mean(grey_img)
-    return mean
+    rgb_img = misc.imread(file, mode='RGB')
+    r_mean = np.mean(rgb_img[:,:,0])
+    b_mean = np.mean(rgb_img[:,:,1])
+    g_mean = np.mean(rgb_img[:,:,2])
+
+    return (r_mean, b_mean, g_mean)
 
 def calculate_img_stats(main_data_dir, dataset):
 
     files = glob.glob(os.path.join(main_data_dir, dataset) + '/*.png')
-    resulting_means = []
+    R_means = []
+    G_means = []
+    B_means = []
 
     with ProcessPoolExecutor(32) as executor:
         futures = [executor.submit(compute_mean, f) for f in files]
@@ -37,12 +42,15 @@ def calculate_img_stats(main_data_dir, dataset):
         for i in tqdm(range(len(futures))):
             try:
                 example = futures[i].result()
-                resulting_means.append(example)
+                R_means.append(example[0])
+                G_means.append(example[1])
+                B_means.append(example[2])
             except Exception as e:
                 print "Failed to compute means"
 
-    print np.mean(resulting_means)
-    print np.std(resulting_means)
+    print "R mean: {0} || R std: {1}".format(np.mean(R_means), np.std(R_means))
+    print "G mean: {0} || G std: {1}".format(np.mean(G_means), np.std(G_means))
+    print "B mean: {0} || B std: {1}".format(np.mean(B_means), np.std(B_means))
 
 def calculate_class_ratios(main_data_dir, dataset):
 
@@ -101,11 +109,11 @@ if __name__ == '__main__':
     main_data_dir = '/media/data_cifs/andreas/pathology/gleason_training_patches/'
     main_tfrecords_dir = '/media/data_cifs/andreas/pathology/gleason_training_patches/tfrecords'
 
-    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'train')
-    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'val')
-    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'test')
+    build_tfrecords(main_data_dir, main_tfrecords_dir, 'train')
+    build_tfrecords(main_data_dir, main_tfrecords_dir, 'val')
+    build_tfrecords(main_data_dir, main_tfrecords_dir, 'test')
 
-    # calculate_class_ratios(main_data_dir, 'train')
+    calculate_class_ratios(main_data_dir, 'train')
     calculate_img_stats(main_data_dir, 'train')
 
 
