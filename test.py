@@ -12,7 +12,7 @@ from tensorflow.contrib import slim
 import matplotlib.pyplot as plt
 from config import GleasonConfig
 from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
-from tf_record import read_and_decode
+from old_tf_record import read_and_decode
 
 
 def plot_confusion_matrix(cm, classes,
@@ -165,10 +165,10 @@ if __name__ == '__main__':
     parser.add_argument("checkpoint")
     args = parser.parse_args()
 
-    test_Unet(args.device, args.trinary, args.grayscale, args.checkpoint)
-     # cf = np.load('results.npy')
+    # test_Unet(args.device, args.trinary, args.grayscale, args.checkpoint)
+    cf = np.load('results.npy')
     # plot_confusion_matrix(cf, ['Background', 'Benign', 'Gleason 3', 'Gleason 4', 'Gleason 5'], normalize=True)
-    # plot_confusion_matrix(cf, ['Background', 'Benign', 'Malignant'], normalize=True)
+    plot_confusion_matrix(cf, ['Background', 'Benign', 'Malignant'], normalize=True)
 
 
 

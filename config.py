@@ -58,6 +58,29 @@ class GleasonConfig():
                                       'distort_brightness_constrast':False,
                                       'grayscale':False
                                      }
+        self.restore = True
+        self.model_path = '/media/data_cifs/andreas/pathology/gleason_training/checkpoints/pretraining_gleason_unet/pretraining_gleason_unet_cross_entropy_multi_grayscale_2018_08_31_21_21_08_14400.ckpt'
+        self.checkpoint_exclude_scopes = [  
+                                           'unet/conv4/',
+                                           'unet/batch_norm_conv4_1',
+                                           'unet/batch_norm_conv4_2',
+                                           'unet/conv5/',
+                                           'unet/batch_norm_conv5_1',
+                                           'unet/batch_norm_conv5_2',
+                                           'unet/conv6/',
+                                           'unet/batch_norm_conv6_2',
+                                           'unet/batch_norm_conv6_3',
+                                           'unet/conv7/',
+                                           'unet/batch_norm_conv7_2',
+                                           'unet/batch_norm_conv7_3',
+                                           'unet/conv8/',
+                                           'unet/batch_norm_conv8_2',
+                                           'unet/batch_norm_conv8_3',
+                                           'unet/conv9/',
+                                           'unet/batch_norm_conv9_2',
+                                           'unet/batch_norm_conv9_3',
+                                           'unet/output_layer/'
+                                          ]
 
 
     def weighted_cross_entropy(self, onehot_labels, flatten_train_logits, trinary, class_weights):
@@ -75,46 +98,14 @@ class GleasonConfig():
 
         return weighted_batch_loss
 
-
-    # def weighted_cross_entropy(self, onehot_labels, flatten_train_logits, trinary, class_weights):
-
-    #     ground_truth = onehot_labels
-    #     ones_count = tf.cast(tf.equal(scores, 1), dtype=tf.float32)
-    #     twos_count = tf.cast(tf.equal(scores, 2), dtype=tf.float32)
-    #     threes_count = tf.cast(tf.equal(scores, 3), dtype=tf.float32)
-    #     fours_count = tf.cast(tf.equal(scores, 4), dtype=tf.float32)
-
-
-    #     class_weights = np.load(class_weights).astype(np.float32)
-    #     if trinary == 1:
-    #         class_weights = np.array([class_weights[0], class_weights[1], class_weights[2]*class_weights[3]*class_weights[4]])
-    #     else:
-    #         tf.equal()
-    #     tf_class_weights = tf.constant(class_weights)
-    #     weight_map = tf.multiply(onehot_labels, tf_class_weights)
-    #     weight_map = tf.reduce_sum(weight_map, axis=1)
-
-    #     batch_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels = onehot_labels, logits = flatten_train_logits)
-
-    #     weighted_batch_loss = tf.multiply(batch_loss, weight_map)
-
-    #     return weighted_batch_loss
-
-    def focal_loss(self, onehot_labels, logits, trinary, class_weights, gamma=1.5, paper_alpha_t=False, name=None, scope=None):
+    def focal_loss(self, onehot_labels, logits,gamma=1.5, alpha = 0.1, name=None, scope=None):
       
         predictions = tf.nn.sigmoid(logits)
         predictions_pt = tf.where(tf.equal(onehot_labels, 1.0), predictions, 1.0-predictions)
         # add small value to avoid 0
         epsilon = 1e-8
-
-        class_weights = np.load(class_weights).astype(np.float32)
-        if trinary == 1:
-            class_weights = np.array([class_weights[0], class_weights[1], class_weights[2]*class_weights[3]*class_weights[4]])
-        alpha_t = tf.constant(class_weights)
-        if paper_alpha_t:
-            alpha_t = 0.25
-            alpha_t = tf.scalar_mul(alpha, tf.ones_like(onehot_labels, dtype=tf.float32))
-            alpha_t = tf.where(tf.equal(onehot_labels, 1.0), alpha_t, 1.0-alpha_t)
+        alpha_t = tf.scalar_mul(alpha, tf.ones_like(onehot_labels, dtype=tf.float32))
+        alpha_t = tf.where(tf.equal(onehot_labels, 1.0), alpha_t, 1.0-alpha_t)
         losses = tf.reduce_sum(-alpha_t * tf.pow(1.0 - predictions_pt, gamma) * tf.log(predictions_pt+epsilon), axis=1)
         return losses
 

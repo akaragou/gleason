@@ -20,12 +20,12 @@ def train(device, loss_name, trinary, grayscale):
 
     # load training data
     train_filename_queue = tf.train.string_input_producer(
-    [config.pretrain_train_fn], num_epochs=config.num_train_epochs)
+    [config.train_fn], num_epochs=config.num_train_epochs)
     # load validation data
     val_filename_queue = tf.train.string_input_producer(
-    [config.pretrain_val_fn], num_epochs=config.num_train_epochs)
+    [config.val_fn], num_epochs=config.num_train_epochs)
 
-    model_train_name = 'pretraining_gleason_unet'
+    model_train_name = 'unet_with_pretrain'
     name = loss_name
     
     if trinary == 1:
@@ -109,7 +109,7 @@ def train(device, loss_name, trinary, grayscale):
             elif loss_name == 'weighted_cross_entropy':
                 batch_loss = config.weighted_cross_entropy(one_hot_lables,flatten_train_logits,trinary,'updated_train_class_weights.npy')
             elif loss_name == 'focal_loss':
-                batch_loss = config.focal_loss(one_hot_lables, flatten_train_logits,trinary,'updated_train_class_weights.npy')
+                batch_loss = config.focal_loss(one_hot_lables, flatten_train_logits)
             else:
                 raise Exception("Not known loss! options are cross entropy and focal loss")    
             
@@ -199,12 +199,33 @@ def train(device, loss_name, trinary, grayscale):
    
     summary_op = tf.summary.merge_all()
 
+    if config.restore:
+        # adjusting variables to keep in the model
+        # variables that are exluded will allow for transfer learning (normally fully connected layers are excluded)
+        exclusions = [scope.strip() for scope in config.checkpoint_exclude_scopes]
+        variables_to_restore = []
+        for var in slim.get_model_variables():
+            excluded = False
+            for exclusion in exclusions:
+                if var.op.name.startswith(exclusion):
+                    excluded = True
+                    break
+            if not excluded:
+                variables_to_restore.append(var)
+        print "Restroing variables:"
+        for var in variables_to_restore:
+            print var
+        restorer = tf.train.Saver(variables_to_restore)
+
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
         sess.run(tf.group(tf.global_variables_initializer(),
              tf.local_variables_initializer()))
+
+        if config.restore:
+            restorer.restore(sess, config.model_path)
+
         summary_writer = tf.summary.FileWriter(summary_dir, sess.graph)
-        
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
@@ -254,7 +275,7 @@ def train(device, loss_name, trinary, grayscale):
 
                     # Save the model checkpoint if it's the best yet
                     if val_acc_total >= max_val_acc:
-                        file_name = 'pretraining_gleason_unet_{0}_{1}'.format(dt_stamp, step_count)
+                        file_name = 'unet_{0}_{1}'.format(dt_stamp, step_count)
                         saver.save(
                             sess,
                             config.get_checkpoint_filename(model_train_name, file_name))

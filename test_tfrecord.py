@@ -2,8 +2,8 @@ from __future__ import division
 import os
 import tensorflow as tf
 import numpy as np
-from config import GleasonConfig
-from tf_record import read_and_decode
+from resnet_config import GleasonConfig
+from tfrecord import read_and_decode, normalize
 import matplotlib.pyplot as plt
 from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
@@ -12,47 +12,74 @@ import math
 
 PI = tf.constant(math.pi)
 
+
+def warp(img, model_dims=[224, 224, 1], size_of_batch=1):
+
+    X = tf.random_uniform([model_dims[0], model_dims[1]])*2 - 1
+    Y = tf.random_uniform([model_dims[0], model_dims[1]])*2 - 1
+    X = tf.reshape(X, [1, model_dims[0],model_dims[1], 1])
+    Y = tf.reshape(Y, [1, model_dims[0],model_dims[1], 1])
+
+    mean = 0.0
+    sigma = 1.0
+    alpha = 10.0
+    ksize = 128
+
+    x = tf.linspace(-3.0, 3.0, ksize)
+    z = ((1.0 / (sigma * tf.sqrt(2.0 * PI))) * tf.exp(tf.negative(tf.pow(x - mean, 2.0) / (2.0 * tf.pow(sigma, 2.0)))))
+    ksize = z.get_shape().as_list()[0]
+    z_2d = tf.matmul(tf.reshape(z, [ksize, 1]), tf.reshape(z, [1, ksize]))
+    z_4d = tf.reshape(z_2d, [ksize, ksize, 1, 1])
+
+    X_convolved = tf.nn.conv2d(X, z_4d, strides=[1, 1, 1, 1], padding='SAME')
+    Y_convolved = tf.nn.conv2d(Y, z_4d, strides=[1, 1, 1, 1], padding='SAME')
+
+    X_convolved = (X_convolved / tf.reduce_max(X_convolved))*alpha
+    Y_convolved = (Y_convolved / tf.reduce_max(Y_convolved))*alpha
+
+    trans = tf.stack([X_convolved,Y_convolved], axis=-1)
+    trans = tf.reshape(trans, [-1])
+
+    batch_trans = tf.tile(trans, [size_of_batch])
+    batch_trans = tf.reshape(batch_trans, [size_of_batch, model_dims[0], model_dims[1] ,2])
+
+    img = tf.reshape(img, [size_of_batch, model_dims[0], model_dims[1], model_dims[2]])
+
+    img = tf.contrib.image.dense_image_warp(img, batch_trans)
+
+    return img
+
 def test_tf_record(device):
 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device) # use nvidia-smi to see available options '0' means first gpu
     config = GleasonConfig() # loads configuration
 
+    dic = {
+            'rand_flip_left_right':False,
+            'rand_flip_top_bottom':False,
+            'rand_crop': False,
+            'rand_rotate':False,
+            'warp':False,
+            'distort_brightness_constrast':False,
+            'grayscale':True
+        }
+
     # load training data
-    filename_queue = tf.train.string_input_producer(
-    [config.val_fn], num_epochs=4)
+    filename_queue = tf.train.string_input_producer([config.test_fn], num_epochs=4)
    
  
-    train_images, train_masks, _ = read_and_decode(filename_queue = filename_queue,
-                                                img_dims = config.input_image_size,
-                                                size_of_batch = 1,
-                                                augmentations_dic = config.train_augmentations_dic,
+    train_images, train_labels, _  = read_and_decode(filename_queue = filename_queue,
+                                                img_dims = [256, 256, 3],
+                                                size_of_batch = 32,
+                                                augmentations_dic = dic,
                                                 num_of_threads = 1,
                                                 shuffle = False)
-
-    
-    mean_iou = config.pixel_accuracy(train_masks, train_masks)
-    # mean = 0.0
-    # sigma = 1.0
-    # x = tf.linspace(-1.0, 1.0, 100)
-
-    # z = ((1.0 / (sigma * tf.sqrt(2.0 * PI))) * tf.exp(tf.negative(tf.pow(x - mean, 2.0) / (2.0 * tf.pow(sigma, 2.0)))))
-    # ksize = z.get_shape().as_list()[0]
-   
-    # z_2d = tf.matmul(tf.reshape(z, [ksize, 1]), tf.reshape(z, [1, ksize]))
-
-    # z_3d = tf.stack([z_2d,z_2d,z_2d],axis=-1)
-    # print 'here'
-    # print z_3d
-
-    # z_4d = tf.reshape(z_3d, [ksize, ksize, 3, 1])
-    # print(z_4d.get_shape().as_list())
-
-    # convolved = tf.nn.depthwise_conv2d(train_images, z_4d, strides=[1, 1, 1, 1], padding='SAME')
+    norm_images = normalize(train_images)
+    # warped_images = warp(train_images)
 
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
-        sess.run(tf.group(tf.global_variables_initializer(),
-             tf.local_variables_initializer()))
+        sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
@@ -61,16 +88,18 @@ def test_tf_record(device):
 
             while not coord.should_stop():
 
-                np_image, np_mask, np_mean_iou, np_freq_weight_iou = sess.run([train_images,train_masks,mean_iou])
-                
-                print np_mean_iou
-                print np_freq_weight_iou
+                img = sess.run(train_images)
 
-                f, (ax1, ax2) = plt.subplots(1, 2)
-                ax1.imshow(np.squeeze(np_image), cmap='gray')
-                ax2.imshow(np.squeeze(np_mask), cmap='gray')
-                plt.show()
-                # plt.pause(0.2)
+
+                image, norm_img = sess.run([train_images, norm_images])
+                print np.shape(image)
+                print np.shape(norm_img)
+                print norm_img
+
+                # f, (ax1, ax2) = plt.subplots(1, 2)
+                # ax1.imshow(np.squeeze(image), cmap='gray')
+                # ax2.imshow(np.squeeze(warp_iamge), cmap='gray')
+                # plt.show()
 
         except tf.errors.OutOfRangeError:
             print 'Done'
@@ -80,16 +109,5 @@ def test_tf_record(device):
         sess.close()
 
 
-
-def test(device):
-
-    config = GleasonConfig() # loads configuration
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(device) # use nvidia-smi to see available options '0' means first gpu
-    test = tf.constant([1, 2, -1,-1,1])
-
-    threshold = tf.clip_by_value(test, -1, 1)
-    with tf.Session() as sess:
-        print sess.run(threshold)
-    
 if __name__ == '__main__':
-    test_tf_record(0)
+    test_tf_record(5)
