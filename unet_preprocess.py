@@ -64,22 +64,22 @@ def unet(inputs,
             ###################
             # upsampling path #
             ###################
-            conv6_1 = slim.conv2d_transpose(conv5_2, 256, [2,2], stride=2, scope='conv6/transpose_conv6_1')
+            conv6_1 = slim.conv2d_transpose(conv5_2, 256, [2,2], activation_fn=None, stride=2, scope='conv6/transpose_conv6_1')
             merge_1 = tf.concat([conv6_1, conv4_2], axis=-1, name='merge1') 
             conv6_2 = conv_bn_relu(merge_1, 128, is_training, is_batch_norm, scope_name='conv6/conv6_2')
             conv6_3 = conv_bn_relu(conv6_2, 128, is_training, is_batch_norm, scope_name='conv6/conv6_3')
 
-            conv7_1 = slim.conv2d_transpose(conv6_3, 128, [2,2], stride=2, scope = 'conv7/transpose_conv7_1')
+            conv7_1 = slim.conv2d_transpose(conv6_3, 128, [2,2], activation_fn=None, stride=2, scope = 'conv7/transpose_conv7_1')
             merge_2 = tf.concat([conv7_1, conv3_2], axis=-1, name='merge2')
             conv7_2 = conv_bn_relu(merge_2, 64, is_training, is_batch_norm, scope_name='conv7/conv7_2')
             conv7_3 = conv_bn_relu(conv7_2, 64, is_training, is_batch_norm, scope_name='conv7/conv7_3')
 
-            conv8_1 = slim.conv2d_transpose(conv7_3, 64, [2,2], stride=2, scope = 'conv8/transpose_conv8_1')
+            conv8_1 = slim.conv2d_transpose(conv7_3, 64, [2,2], activation_fn=None, stride=2, scope = 'conv8/transpose_conv8_1')
             merge_3 = tf.concat([conv8_1, conv2_2], axis=-1, name='merge3') 
             conv8_2 = conv_bn_relu(merge_3, 32, is_training, is_batch_norm, scope_name='conv8/conv8_2')
             conv8_3 = conv_bn_relu(conv8_2, 32, is_training, is_batch_norm, scope_name='conv8/conv8_3')
 
-            conv9_1 = slim.conv2d_transpose(conv8_3, 32, [2,2], stride=2, scope = 'conv9/transpose_conv9_1')
+            conv9_1 = slim.conv2d_transpose(conv8_3, 32, [2,2], activation_fn=None, stride=2, scope = 'conv9/transpose_conv9_1')
             merge_4 = tf.concat([conv9_1, conv1_2], axis=-1, name='merge4') 
             conv9_2 = conv_bn_relu(merge_4, 16, is_training, is_batch_norm, scope_name='conv9/conv9_2')
             conv9_3 = conv_bn_relu(conv9_2, 16, is_training, is_batch_norm, scope_name='conv9/conv9_3')
@@ -87,7 +87,7 @@ def unet(inputs,
             ###############
             # outpput map #
             ###############
-            output_map = slim.conv2d(conv9_3, num_channels, [3, 1], 
+            output_map = slim.conv2d(conv9_3, num_channels, [3, 3], 
                                     activation_fn=None, normalizer_fn=None, 
                                     scope='output_layer')
 

@@ -17,7 +17,7 @@ def print_model_variables():
     for var in slim.get_model_variables():
         print var 
 
-def train_resnet(device, num_classes, num_layers):
+def train_resnet(device, num_classes, num_layers, normalization):
     """
     Loads training and validations tf records and trains resnet model and validates every number of fixed steps.
     Input: gpu device number 
@@ -45,6 +45,14 @@ def train_resnet(device, num_classes, num_layers):
         model_train_name = model_train_name + '_' + 'multi'
     else:
         raise Exception('Invalid number of classes!')
+
+
+    if normalization == "standard":
+        model_train_name = model_train_name + '_' + 'standard'
+    elif normalization == "unet":
+        model_train_name = model_train_name + '_' + 'unet'
+    else:
+        raise Exception('Not known normalization! Options are: standard and unet.')
 
 
     dt_stamp = time.strftime(model_train_name  + "_%Y_%m_%d_%H_%M_%S")
@@ -76,7 +84,7 @@ def train_resnet(device, num_classes, num_layers):
                                          size_of_batch = config.val_batch_size,
                                          augmentations_dic = config.val_augmentations_dic,
                                          num_of_threads = 4,
-                                         shuffle = True)
+                                         shuffle = False)
 
     if int(num_classes) == 2:
         print "Converting labels to Binary..."
@@ -99,9 +107,9 @@ def train_resnet(device, num_classes, num_layers):
                 if normalization == "standard":
                     train_img = normalize(train_img)
                 elif normalization == "unet":
-                    train_img = unet_preprocess.unet(train_img,
+                    train_img, _ = unet_preprocess.unet(train_img,
                                                      is_training = True,
-                                                     is_batch_norm = True,
+                                                     is_batch_norm = False,
                                                      num_channels = 3)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
@@ -117,9 +125,9 @@ def train_resnet(device, num_classes, num_layers):
                 if normalization == "standard":
                     val_img = normalize(val_img)
                 elif normalization == "unet":
-                    val_img = unet_preprocess.unet(val_img,
+                    val_img,_ = unet_preprocess.unet(val_img,
                                                    is_training = False,
-                                                   is_batch_norm = True,
+                                                   is_batch_norm = False,
                                                    num_channels = 3)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
@@ -133,12 +141,12 @@ def train_resnet(device, num_classes, num_layers):
         with tf.variable_scope('resnet_v2_101') as resnet_scope:
             with tf.name_scope('train') as train_scope:
 
-                 if normalization == "standard":
+                if normalization == "standard":
                     train_img = normalize(train_img)
                 elif normalization == "unet":
-                    train_img = unet_preprocess.unet(train_img,
+                    train_img, _ = unet_preprocess.unet(train_img,
                                                      is_training = True,
-                                                     is_batch_norm = True,
+                                                     is_batch_norm = False,
                                                      num_channels = 3)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
@@ -154,9 +162,9 @@ def train_resnet(device, num_classes, num_layers):
                 if normalization == "standard":
                     val_img = normalize(val_img)
                 elif normalization == "unet":
-                    val_img = unet_preprocess.unet(val_img,
+                    val_img,_ = unet_preprocess.unet(val_img,
                                                    is_training = False,
-                                                   is_batch_norm = True,
+                                                   is_batch_norm = False,
                                                    num_channels = 3)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
@@ -315,5 +323,6 @@ if __name__ == '__main__':
     parser.add_argument("device")
     parser.add_argument("num_classes")
     parser.add_argument("num_layers")
+    parser.add_argument("normalization")
     args = parser.parse_args()
-    train_resnet(args.device,  args.num_classes, args.num_layers) # select gpu to train model on
+    train_resnet(args.device,  args.num_classes, args.num_layers, args.normalization) 

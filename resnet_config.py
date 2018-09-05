@@ -20,14 +20,14 @@ class GleasonConfig():
 
         self.restore = False
         self.optimizer = "adam"
-        self.l2_reg = 0.005
+        self.l2_reg = 0.001
         self.initial_learning_rate = 0.01
         self.momentum = 0.9 # if optimizer is nestrov
         self.decay_steps = 5000 # number of steps before decaying the learning rate
         self.learning_rate_decay_factor = 0.1
-        self.train_batch_size = 32
-        self.val_batch_size = 32
-        self.num_batches_to_validate_over = 100 # number of batches to validate over 32*100 = 3200
+        self.train_batch_size = 16
+        self.val_batch_size = 16
+        self.num_batches_to_validate_over = 262 # number of batches to validate over 32*100 = 3200
         self.validate_every_num_steps = 100 # perform a validation step
         self.num_train_epochs = 10000
         self.input_image_size = [256, 256, 3] # size of the input tf record image
@@ -40,8 +40,7 @@ class GleasonConfig():
                                         'rand_crop': True,
                                         'rand_rotate':True,
                                         'warp':True,
-                                        'distort_brightness_constrast':True,
-                                        'grayscale':True
+                                        'grayscale':False
                                         }
 
         self.val_augmentations_dic = {
@@ -50,8 +49,7 @@ class GleasonConfig():
                                     'rand_crop': False,
                                     'rand_rotate':False,
                                     'warp':False,
-                                    'distort_brightness_constrast':False,
-                                    'grayscale':True
+                                    'grayscale':False
                                      }
 
         # scopes to exclude for finetunning 

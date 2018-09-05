@@ -295,8 +295,6 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
   if augmentations_dic['grayscale']:
     img = tf.image.rgb_to_grayscale(img)
 
-  if augmentations_dic['distort_brightness_constrast']:
-    img = distort_brightness_constrast(img, ordering=random.randint(0,1))
   
   return img, t_l, f_p
 

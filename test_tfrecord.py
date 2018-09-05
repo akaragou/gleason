@@ -13,7 +13,7 @@ import math
 PI = tf.constant(math.pi)
 
 
-def warp(img, model_dims=[224, 224, 1], size_of_batch=1):
+def warp(img, model_dims=[224, 224, 3], size_of_batch=1):
 
     X = tf.random_uniform([model_dims[0], model_dims[1]])*2 - 1
     Y = tf.random_uniform([model_dims[0], model_dims[1]])*2 - 1
@@ -61,7 +61,7 @@ def test_tf_record(device):
             'rand_rotate':False,
             'warp':False,
             'distort_brightness_constrast':False,
-            'grayscale':True
+            'grayscale':False
         }
 
     # load training data
@@ -70,12 +70,12 @@ def test_tf_record(device):
  
     train_images, train_labels, _  = read_and_decode(filename_queue = filename_queue,
                                                 img_dims = [256, 256, 3],
-                                                size_of_batch = 32,
+                                                size_of_batch = 1,
                                                 augmentations_dic = dic,
                                                 num_of_threads = 1,
                                                 shuffle = False)
-    norm_images = normalize(train_images)
-    # warped_images = warp(train_images)
+    # norm_images = normalize(train_images)
+    warped_images = warp(train_images)
 
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
@@ -91,15 +91,15 @@ def test_tf_record(device):
                 img = sess.run(train_images)
 
 
-                image, norm_img = sess.run([train_images, norm_images])
-                print np.shape(image)
-                print np.shape(norm_img)
-                print norm_img
+                image, warp_iamge = sess.run([train_images, warped_images])
+                # print np.shape(image)
+                # print np.shape(norm_img)
+                # print norm_img
 
-                # f, (ax1, ax2) = plt.subplots(1, 2)
-                # ax1.imshow(np.squeeze(image), cmap='gray')
-                # ax2.imshow(np.squeeze(warp_iamge), cmap='gray')
-                # plt.show()
+                f, (ax1, ax2) = plt.subplots(1, 2)
+                ax1.imshow(np.squeeze(image), cmap='gray')
+                ax2.imshow(np.squeeze(warp_iamge), cmap='gray')
+                plt.show()
 
         except tf.errors.OutOfRangeError:
             print 'Done'
