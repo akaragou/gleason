@@ -18,8 +18,11 @@ import math
 VGG_MEAN = [103.939, 116.779, 123.68]
 PI = tf.constant(math.pi)
 
-GLEASON_MEAN = [167.312, 135.0144, 187.337]
-GLEASON_STD = [22.496, 27.958, 25.337]
+GLEASON_MEANS = [167.312, 135.0144, 187.337]
+GLEASON_STDS = [22.496, 27.958, 25.337]
+
+GLEASON_MEAN_G = 153.85
+GLEASON_MEAN_STD_G  = 25.38
 
 def _bytes_feature(value):
   return tf.train.Feature(bytes_list = tf.train.BytesList(value=[value]))
@@ -44,20 +47,22 @@ def draw_grid(im, grid_size):
      
   return im
 
-def normalize(image_rgb):
+def normalize(image):
 
-  image_rgb_scaled = image_rgb * 255.0
-  red, green, blue = tf.split(num_or_size_splits=3, axis=3, value=image_rgb_scaled)
-  assert red.get_shape().as_list()[1:] == [224, 224, 1]
-  assert green.get_shape().as_list()[1:] == [224, 224, 1]
-  assert blue.get_shape().as_list()[1:] == [224, 224, 1]
-  image_bgr = tf.concat(values = [
-      (blue - GLEASON_MEAN[0]) / GLEASON_STD[0],
-      (green - GLEASON_MEAN[1]) / GLEASON_STD[1],
-      (red - GLEASON_MEAN[2]) / GLEASON_STD[2]
-      ], axis=3)
-  assert image_bgr.get_shape().as_list()[1:] == [224, 224, 3], image_bgr.get_shape().as_list()
-  return image_bgr
+  # image_rgb_scaled = image_rgb * 255.0
+  # red, green, blue = tf.split(num_or_size_splits=3, axis=3, value=image_rgb_scaled)
+  # assert red.get_shape().as_list()[1:] == [224, 224, 1]
+  # assert green.get_shape().as_list()[1:] == [224, 224, 1]
+  # assert blue.get_shape().as_list()[1:] == [224, 224, 1]
+  # image_bgr = tf.concat(values = [
+  #     (blue - GLEASON_MEAN[0]) / GLEASON_STD[0],
+  #     (green - GLEASON_MEAN[1]) / GLEASON_STD[1],
+  #     (red - GLEASON_MEAN[2]) / GLEASON_STD[2]
+  #     ], axis=3)
+  # assert image_bgr.get_shape().as_list()[1:] == [224, 224, 3], image_bgr.get_shape().as_list()
+  # return image_bgr
+  image_scaled = (image - GLEASON_MEAN_G) / GLEASON_MEAN_STD_G
+  return image_scaled
 
 def tfrecord2metafilename(tfrecord_filename):
   """
@@ -199,7 +204,7 @@ def create_tf_record(tfrecords_filename, file_pointers, target_labels):
     print '-' * 100
 
 
-def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,256], model_dims=[224,224,1], size_of_batch=32,\
+def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,256], model_dims=[224,224,3], size_of_batch=32,\
                     augmentations_dic=None, num_of_threads=1, shuffle=True):
 
   reader = tf.TFRecordReader()
@@ -223,8 +228,6 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
 
   image = tf.reshape(image, img_dims)
   image = tf.cast(image, tf.float32)
-
-  image = image/255 # 0, 1 normalization
 
   if augmentations_dic['rand_crop']:
     image = tf.random_crop(image, model_dims)
@@ -255,7 +258,7 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
   else:
     img, t_l, f_p = tf.train.batch([image, target_label, file_path],
                                          batch_size=size_of_batch,
-                                         capacity=100000,
+                                         capacity=5000,
                                          allow_smaller_final_batch=True,
                                          num_threads=num_of_threads)
 

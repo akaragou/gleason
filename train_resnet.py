@@ -107,10 +107,12 @@ def train_resnet(device, num_classes, num_layers, normalization):
                 if normalization == "standard":
                     train_img = normalize(train_img)
                 elif normalization == "unet":
+                    print train_img
                     train_img, _ = unet_preprocess.unet(train_img,
                                                      is_training = True,
                                                      is_batch_norm = False,
-                                                     num_channels = 3)
+                                                     num_channels = 1)
+                    print train_img
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
                 with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
@@ -128,7 +130,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                     val_img,_ = unet_preprocess.unet(val_img,
                                                    is_training = False,
                                                    is_batch_norm = False,
-                                                   num_channels = 3)
+                                                   num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
                 with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
@@ -147,7 +149,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                     train_img, _ = unet_preprocess.unet(train_img,
                                                      is_training = True,
                                                      is_batch_norm = False,
-                                                     num_channels = 3)
+                                                     num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
                 with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
@@ -165,7 +167,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                     val_img,_ = unet_preprocess.unet(val_img,
                                                    is_training = False,
                                                    is_batch_norm = False,
-                                                   num_channels = 3)
+                                                   num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
                 with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
