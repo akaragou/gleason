@@ -20,6 +20,14 @@ def compute_mean(file):
 
     return (r_mean, b_mean, g_mean)
 
+def compute_mean_grey(file):
+
+    img = misc.imread(file, mode='L')
+    img_mean = np.mean(img)
+
+    return img_mean
+
+
 def calculate_img_stats(main_data_dir, dataset):
 
     files = glob.glob(os.path.join(main_data_dir, dataset) + '/*.png')
@@ -27,8 +35,10 @@ def calculate_img_stats(main_data_dir, dataset):
     G_means = []
     B_means = []
 
+    grey_mean = []
+
     with ProcessPoolExecutor(32) as executor:
-        futures = [executor.submit(compute_mean, f) for f in files]
+        futures = [executor.submit(compute_mean_grey, f) for f in files]
         kwargs = {
               'total': len(futures),
               'unit': 'it',
@@ -42,15 +52,18 @@ def calculate_img_stats(main_data_dir, dataset):
         for i in tqdm(range(len(futures))):
             try:
                 example = futures[i].result()
-                R_means.append(example[0])
-                G_means.append(example[1])
-                B_means.append(example[2])
+                grey_mean.append(example)
+                # R_means.append(example[0])
+                # G_means.append(example[1])
+                # B_means.append(example[2])
             except Exception as e:
                 print "Failed to compute means"
 
-    print "R mean: {0} || R std: {1}".format(np.mean(R_means), np.std(R_means))
-    print "G mean: {0} || G std: {1}".format(np.mean(G_means), np.std(G_means))
-    print "B mean: {0} || B std: {1}".format(np.mean(B_means), np.std(B_means))
+    print "grey mean: {0} || grey std: {1}".format(np.mean(grey_mean), np.std(grey_mean))
+
+    # print "R mean: {0} || R std: {1}".format(np.mean(R_means), np.std(R_means))
+    # print "G mean: {0} || G std: {1}".format(np.mean(G_means), np.std(G_means))
+    # print "B mean: {0} || B std: {1}".format(np.mean(B_means), np.std(B_means))
 
 def calculate_class_ratios(main_data_dir, dataset):
 
@@ -109,11 +122,11 @@ if __name__ == '__main__':
     main_data_dir = '/media/data_cifs/andreas/pathology/gleason_training_patches/'
     main_tfrecords_dir = '/media/data_cifs/andreas/pathology/gleason_training_patches/tfrecords'
 
-    build_tfrecords(main_data_dir, main_tfrecords_dir, 'train')
-    build_tfrecords(main_data_dir, main_tfrecords_dir, 'val')
-    build_tfrecords(main_data_dir, main_tfrecords_dir, 'test')
+    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'train')
+    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'val')
+    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'test')
 
-    calculate_class_ratios(main_data_dir, 'train')
+    # calculate_class_ratios(main_data_dir, 'train')
     calculate_img_stats(main_data_dir, 'train')
 
 

@@ -20,8 +20,8 @@ class GleasonConfig():
 
         self.restore = False
         self.optimizer = "adam"
-        self.l2_reg = 0.001
-        self.initial_learning_rate = 0.01
+        self.l2_reg = 0.0005
+        self.initial_learning_rate = 0.001
         self.momentum = 0.9 # if optimizer is nestrov
         self.decay_steps = 5000 # number of steps before decaying the learning rate
         self.learning_rate_decay_factor = 0.1
@@ -39,7 +39,7 @@ class GleasonConfig():
                                         'rand_flip_top_bottom':True,
                                         'rand_crop': True,
                                         'rand_rotate':True,
-                                        'warp':True,
+                                        'warp':False,
                                         'grayscale':False
                                         }
 

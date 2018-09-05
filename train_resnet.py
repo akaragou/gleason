@@ -75,7 +75,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                                              model_dims = config.model_image_size,
                                              size_of_batch = config.train_batch_size,
                                              augmentations_dic = config.train_augmentations_dic,
-                                             num_of_threads = 4,
+                                             num_of_threads = 2,
                                              shuffle = True)
 
     val_img, val_t_l, _  = read_and_decode(filename_queue = val_filename_queue,
@@ -83,7 +83,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                                          model_dims = config.model_image_size,
                                          size_of_batch = config.val_batch_size,
                                          augmentations_dic = config.val_augmentations_dic,
-                                         num_of_threads = 4,
+                                         num_of_threads = 2,
                                          shuffle = False)
 
     if int(num_classes) == 2:
