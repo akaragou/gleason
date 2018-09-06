@@ -38,7 +38,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
     [config.val_fn], num_epochs=config.num_train_epochs)
 
     # defining model names and setting output and summary directories
-    model_train_name = 'lung_resnet' + '_' + num_layers 
+    model_train_name = 'resnet' + '_' + num_layers 
     if int(num_classes) == 2:
         model_train_name = model_train_name + '_' + 'binary'
     elif int(num_classes) == 4:
