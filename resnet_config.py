@@ -21,7 +21,7 @@ class GleasonConfig():
         self.embedding = os.path.join(self.main_dir, 'embedding')
 
         self.restore = False
-        self.optimizer = "adam"
+        self.optimizer = "nestrov"
         self.l2_reg = 0.001
         self.initial_learning_rate = 0.001
         self.momentum = 0.9 # if optimizer is nestrov
@@ -34,7 +34,7 @@ class GleasonConfig():
         self.num_train_epochs = 10000
         self.input_image_size = [256, 256, 3] # size of the input tf record image
         self.model_image_size = [224, 224, 3] # image dimesions that the model takes in
-        self.preprocess_batchnorm = False
+        self.preprocess_batchnorm = True
 
         # various options for altering input images during training and validation
         self.train_augmentations_dic = {
@@ -54,14 +54,6 @@ class GleasonConfig():
                                     'warp':False,
                                     'grayscale':True
                                      }
-
-        # scopes to exclude for finetunning 
-        self.checkpoint_exclude_scopes = [  "resnet_v2_50/global_pool", 
-                                            "resnet_v2_50/target_logits",
-                                            "resnet_v2_50/gene_prof_logits",
-                                            "resnet_v2_50/tumor_normal_logits",
-                                            "resnet_v2_50/burden_logits"
-                                         ]
 
         # saliency map config
         self.target_gradients = True
