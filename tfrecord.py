@@ -14,6 +14,7 @@ import math
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from itertools import repeat
 import math
+import cv2
 
 VGG_MEAN = [103.939, 116.779, 123.68]
 PI = tf.constant(math.pi)
@@ -33,19 +34,15 @@ def _int64_feature(value):
 def _float_feature(value):
   return tf.train.Feature(float_list = tf.train.FloatList(value=[value]))
 
-def draw_grid(im, grid_size):
-  """ Draws grid lines on input images
-  Inputs: im - input image
-          grid_size - number of vertical/horizontal grid lines
-  Output: im - image with grid lines
-  """
-  shape = im.shape
+def draw_grid(img, grid_size):
+  
+  shape = img.shape
   for i in range(0, shape[1], grid_size):
-      cv2.line(im, (i, 0), (i, shape[0]), color=(0,0,0),thickness=2)
+    cv2.line(img, (i, 0), (i, shape[0]), color=(255,255,255),thickness=2)
   for j in range(0, shape[0], grid_size):
-      cv2.line(im, (0, j), (shape[1], j), color=(0,0,0),thickness=2)
+    cv2.line(img, (0, j), (shape[1], j), color=(255,255,255),thickness=2)
      
-  return im
+  return img
 
 def normalize(image):
 
@@ -98,6 +95,7 @@ def encode(img_path, target_label):
   img = np.array(Image.open(img_path))
   img = img[:,:,:3] # removing img fourth dimension if it exists
 
+  # img = draw_grid(img, 50)
   img_raw = img.tostring()
   path_raw = img_path.encode('utf-8')
 
@@ -171,37 +169,37 @@ def distort_brightness_constrast(image, ordering=0):
 
 def create_tf_record(tfrecords_filename, file_pointers, target_labels):
     
-    writer = tf.python_io.TFRecordWriter(tfrecords_filename)
+  writer = tf.python_io.TFRecordWriter(tfrecords_filename)
 
-    print '%d files in %d categories' % (len(np.unique(file_pointers)), len(np.unique(target_labels)))
+  print '%d files in %d categories' % (len(np.unique(file_pointers)), len(np.unique(target_labels)))
 
-    with ProcessPoolExecutor(32) as executor:
-      futures = [executor.submit(encode, f, t_l) for f, t_l in zip(file_pointers, target_labels)]
+  with ProcessPoolExecutor(32) as executor:
+    futures = [executor.submit(encode, f, t_l) for f, t_l in zip(file_pointers, target_labels)]
 
-      kwargs = {
-          'total': len(futures),
-          'unit': 'it',
-          'unit_scale': True,
-          'leave': True
-      }
+    kwargs = {
+        'total': len(futures),
+        'unit': 'it',
+        'unit_scale': True,
+        'leave': True
+    }
 
-      for f in tqdm(as_completed(futures), **kwargs):
-          pass
-      print "Done loading futures!"
-      print "Writing examples..."
-      for i in tqdm(range(len(futures))):
-        try:
-            example = futures[i].result()
-            writer.write(example.SerializeToString())
-        except Exception as e:
-            print "Failed to write example!"
+    for f in tqdm(as_completed(futures), **kwargs):
+        pass
+    print "Done loading futures!"
+    print "Writing examples..."
+    for i in tqdm(range(len(futures))):
+      try:
+          example = futures[i].result()
+          writer.write(example.SerializeToString())
+      except Exception as e:
+          print "Failed to write example!"
 
-    meta = tfrecord2metafilename(tfrecords_filename)
-    np.savez(meta, file_pointers=file_pointers, labels=target_labels, output_pointer=tfrecords_filename)
+  meta = tfrecord2metafilename(tfrecords_filename)
+  np.savez(meta, file_pointers=file_pointers, labels=target_labels, output_pointer=tfrecords_filename)
 
-    print '-' * 100
-    print 'Generated tfrecord at %s' % tfrecords_filename
-    print '-' * 100
+  print '-' * 100
+  print 'Generated tfrecord at %s' % tfrecords_filename
+  print '-' * 100
 
 
 def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,256], model_dims=[224,224,3], size_of_batch=32,\
@@ -242,12 +240,11 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
     image = tf.image.random_flip_up_down(image)
 
   if augmentations_dic['rand_rotate']:
-    elems = tf.convert_to_tensor([0, PI/2, PI, (3*PI)/2])
-    sample = tf.squeeze(tf.multinomial(tf.log([[0.25, 0.25, 0.25, 0.25]]), 1)) 
-    random_angle = elems[tf.cast(sample, tf.int32)]
-    image = tf.contrib.image.rotate(image, random_angle)
-  
-  
+    elems = tf.convert_to_tensor(np.deg2rad(np.array(range(360))))
+    # sample = tf.squeeze(tf.multinomial(tf.log([ 1.0/np.repeat(360, 360)]), 1)) 
+    rand_index = tf.random_uniform(1, minval=0, maxval=359, dtype=tf.int32)
+    random_angle = elems[rand_index]
+    image = tf.contrib.image.rotate(image, random_angle)  
 
   if shuffle:
     img, t_l, f_p = tf.train.shuffle_batch([image, target_label, file_path],
@@ -258,7 +255,7 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
   else:
     img, t_l, f_p = tf.train.batch([image, target_label, file_path],
                                          batch_size=size_of_batch,
-                                         capacity=5000,
+                                         capacity=20000,
                                          allow_smaller_final_batch=True,
                                          num_threads=num_of_threads)
 

@@ -3,7 +3,7 @@ import os
 import tensorflow as tf
 import numpy as np
 from resnet_config import GleasonConfig
-from tfrecord import read_and_decode, normalize
+from tfrecord import read_and_decode, normalize, draw_grid
 import matplotlib.pyplot as plt
 from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
@@ -65,17 +65,17 @@ def test_tf_record(device):
         }
 
     # load training data
-    filename_queue = tf.train.string_input_producer([config.test_fn], num_epochs=4)
+    filename_queue = tf.train.string_input_producer([config.exp_fn], num_epochs=1)
    
  
-    train_images, train_labels, _  = read_and_decode(filename_queue = filename_queue,
+    images, labels, _  = read_and_decode(filename_queue = filename_queue,
                                                 img_dims = [256, 256, 3],
                                                 size_of_batch = 1,
                                                 augmentations_dic = dic,
                                                 num_of_threads = 1,
                                                 shuffle = False)
-    # norm_images = normalize(train_images)
-    warped_images = warp(train_images)
+    # norm_images = normalize(images)
+    # warped_images = warp(images)
 
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
@@ -88,18 +88,18 @@ def test_tf_record(device):
 
             while not coord.should_stop():
 
-                img = sess.run(train_images)
-
-
-                image, warp_iamge = sess.run([train_images, warped_images])
+                np_img = sess.run(images)
                 # print np.shape(image)
                 # print np.shape(norm_img)
                 # print norm_img
 
-                f, (ax1, ax2) = plt.subplots(1, 2)
-                ax1.imshow(np.squeeze(image), cmap='gray')
-                ax2.imshow(np.squeeze(warp_iamge), cmap='gray')
+                print np_img
+                plt.imshow(np.squeeze(np_img))
                 plt.show()
+                # f, (ax1, ax2) = plt.subplots(1, 2)
+                # ax1.imshow(np.squeeze(image), cmap='gray')
+                # ax2.imshow(np.squeeze(warp_iamge), cmap='gray')
+                # plt.show()
 
         except tf.errors.OutOfRangeError:
             print 'Done'

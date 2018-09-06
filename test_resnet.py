@@ -11,11 +11,12 @@ from tensorflow.contrib import slim
 from operator import add
 from sklearn import metrics
 import resnet_v2
+import unet_preprocess
 from tfrecord import vgg_preprocessing, tfrecord2metafilename, read_and_decode, normalize
 from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
 import math
 
-def test_resnet(device, num_classes, num_layers, dataset, checkpoint):
+def test_resnet(device, num_classes, num_layers, dataset, normalization, checkpoint):
     """
     Computes accuracy for the test dataset
     Input: gpu device 
@@ -45,7 +46,7 @@ def test_resnet(device, num_classes, num_layers, dataset, checkpoint):
     else:
         raise Exception('Invalid number of classes!')
 
-    batch_size = 256
+    batch_size = 128
     # loading test data
     test_meta = np.load(tfrecord2metafilename(config.test_fn))
     print 'Using {0} tfrecords: {1} | {2} images'.format(dataset, config.test_fn, len(test_meta['labels']))
@@ -65,15 +66,34 @@ def test_resnet(device, num_classes, num_layers, dataset, checkpoint):
 
     if num_layers == "50":
         print "Loading Resnet 50..."
-
-        test_img = normalize(test_img)
+        if normalization == "standard":
+            print "Using standard normalization..."
+            test_img = normalize(test_img)
+        elif normalization == "unet":
+            print "Using unet normalization..."
+            test_img,_ = unet_preprocess.unet(test_img,
+                                           is_training = False,
+                                           is_batch_norm = False,
+                                           num_channels = 1)
+        else:
+            raise Exception('Not known normalization! Options are: standard and unet.')
         with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
             test_target_logits, _ = resnet_v2.resnet_v2_50(inputs = test_img, 
-                                                           num_classes = config.output_shape,
-                                                           is_training = False) 
+                                                       num_classes = config.output_shape,
+                                                       is_training = False) 
     elif num_layers == "101":
-
-        test_img = normalize(test_img)
+        print "Loading Resnet 101..."
+        if normalization == "standard":
+            print "Using standard normalization..."
+            test_img = normalize(test_img)
+        elif normalization == "unet":
+            print "Using unet normalization..."
+            test_img,_ = unet_preprocess.unet(test_img,
+                                           is_training = False,
+                                           is_batch_norm = False,
+                                           num_channels = 1)
+        else:
+            raise Exception('Not known normalization! Options are: standard and unet.')
         with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
             test_target_logits, _ = resnet_v2.resnet_v2_101(inputs = test_img, 
                                                            num_classes = config.output_shape,
@@ -133,8 +153,9 @@ if __name__ == '__main__':
     parser.add_argument("num_classes")
     parser.add_argument("num_layers")
     parser.add_argument("dataset")
+    parser.add_argument("normalization")
     parser.add_argument("checkpoint")
     args = parser.parse_args()
 
-    test_resnet(args.device, args.num_classes, args.num_layers, args.dataset, args.checkpoint)
+    test_resnet(args.device, args.num_classes, args.num_layers, args.dataset, args.normalization, args.checkpoint)
     

@@ -75,7 +75,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                                              model_dims = config.model_image_size,
                                              size_of_batch = config.train_batch_size,
                                              augmentations_dic = config.train_augmentations_dic,
-                                             num_of_threads = 2,
+                                             num_of_threads = 4,
                                              shuffle = True)
 
     val_img, val_t_l, _  = read_and_decode(filename_queue = val_filename_queue,
@@ -83,7 +83,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                                          model_dims = config.model_image_size,
                                          size_of_batch = config.val_batch_size,
                                          augmentations_dic = config.val_augmentations_dic,
-                                         num_of_threads = 2,
+                                         num_of_threads = 4,
                                          shuffle = False)
 
     if int(num_classes) == 2:
@@ -110,7 +110,8 @@ def train_resnet(device, num_classes, num_layers, normalization):
                     print train_img
                     train_img, _ = unet_preprocess.unet(train_img,
                                                      is_training = True,
-                                                     is_batch_norm = False,
+                                                     is_batch_norm = True,
+                                                     scope=resnet_scope,
                                                      num_channels = 1)
                     print train_img
                 else:
@@ -129,7 +130,8 @@ def train_resnet(device, num_classes, num_layers, normalization):
                 elif normalization == "unet":
                     val_img,_ = unet_preprocess.unet(val_img,
                                                    is_training = False,
-                                                   is_batch_norm = False,
+                                                   is_batch_norm = True,
+                                                   scope=resnet_scope,
                                                    num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
@@ -148,7 +150,8 @@ def train_resnet(device, num_classes, num_layers, normalization):
                 elif normalization == "unet":
                     train_img, _ = unet_preprocess.unet(train_img,
                                                      is_training = True,
-                                                     is_batch_norm = False,
+                                                     is_batch_norm = True,
+                                                     scope = resnet_scope,
                                                      num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
@@ -166,7 +169,8 @@ def train_resnet(device, num_classes, num_layers, normalization):
                 elif normalization == "unet":
                     val_img,_ = unet_preprocess.unet(val_img,
                                                    is_training = False,
-                                                   is_batch_norm = False,
+                                                   is_batch_norm = True,
+                                                   scope = resnet_scope,
                                                    num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
@@ -175,6 +179,8 @@ def train_resnet(device, num_classes, num_layers, normalization):
                                                                    num_classes = config.output_shape,
                                                                    scope = resnet_scope,
                                                                    is_training = False)
+
+    
     else:
         raise Expection("Wrong number of layers! allowed numbers are and 50 and 101.")
 

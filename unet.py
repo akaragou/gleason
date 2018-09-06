@@ -211,7 +211,7 @@ def ResidualUnet(inputs,
             ###############
             # outpput map #
             ###############
-            output_map = slim.conv2d(conv9_5, num_classes, [1, 1], 
+            output_map = slim.conv2d(conv9_5, num_classes, [3, 3], 
                                     activation_fn=None, normalizer_fn=None, 
                                     scope='output_layer')
 

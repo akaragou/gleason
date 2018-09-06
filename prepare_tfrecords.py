@@ -127,7 +127,9 @@ if __name__ == '__main__':
     # build_tfrecords(main_data_dir, main_tfrecords_dir, 'test')
 
     # calculate_class_ratios(main_data_dir, 'train')
-    calculate_img_stats(main_data_dir, 'train')
+    # calculate_img_stats(main_data_dir, 'train')
+
+    build_tfrecords(main_data_dir, main_tfrecords_dir, 'exp')
 
 
 

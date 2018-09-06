@@ -15,12 +15,14 @@ class GleasonConfig():
         self.val_fn =  os.path.join(self.main_dir, 'tfrecords/val.tfrecords')
         self.test_fn =  os.path.join(self.main_dir, 'tfrecords/test.tfrecords')
 
+        self.exp_fn =  os.path.join(self.main_dir, 'tfrecords/exp.tfrecords')
+
         self.features = os.path.join(self.main_dir, 'features')
         self.embedding = os.path.join(self.main_dir, 'embedding')
 
         self.restore = False
         self.optimizer = "adam"
-        self.l2_reg = 0.0005
+        self.l2_reg = 0.005
         self.initial_learning_rate = 0.001
         self.momentum = 0.9 # if optimizer is nestrov
         self.decay_steps = 5000 # number of steps before decaying the learning rate
