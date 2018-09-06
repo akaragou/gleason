@@ -22,7 +22,7 @@ class GleasonConfig():
 
         self.restore = False
         self.optimizer = "adam"
-        self.l2_reg = 0.005
+        self.l2_reg = 0.001
         self.initial_learning_rate = 0.001
         self.momentum = 0.9 # if optimizer is nestrov
         self.decay_steps = 5000 # number of steps before decaying the learning rate
@@ -34,6 +34,7 @@ class GleasonConfig():
         self.num_train_epochs = 10000
         self.input_image_size = [256, 256, 3] # size of the input tf record image
         self.model_image_size = [224, 224, 3] # image dimesions that the model takes in
+        self.preprocess_batchnorm = False
 
         # various options for altering input images during training and validation
         self.train_augmentations_dic = {
@@ -41,7 +42,7 @@ class GleasonConfig():
                                         'rand_flip_top_bottom':True,
                                         'rand_crop': True,
                                         'rand_rotate':True,
-                                        'warp':False,
+                                        'warp':True,
                                         'grayscale':True
                                         }
 

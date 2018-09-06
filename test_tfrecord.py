@@ -55,20 +55,19 @@ def test_tf_record(device):
     config = GleasonConfig() # loads configuration
 
     dic = {
-            'rand_flip_left_right':False,
-            'rand_flip_top_bottom':False,
-            'rand_crop': False,
-            'rand_rotate':False,
-            'warp':False,
-            'distort_brightness_constrast':False,
-            'grayscale':False
+            'rand_flip_left_right':True,
+            'rand_flip_top_bottom':True,
+            'rand_crop': True,
+            'rand_rotate':True,
+            'warp':True,
+            'grayscale':True
         }
 
     # load training data
-    filename_queue = tf.train.string_input_producer([config.exp_fn], num_epochs=1)
+    filename_queue = tf.train.string_input_producer([config.exp_fn], num_epochs=4)
    
  
-    images, labels, _  = read_and_decode(filename_queue = filename_queue,
+    original_images, images, angles  = read_and_decode(filename_queue = filename_queue,
                                                 img_dims = [256, 256, 3],
                                                 size_of_batch = 1,
                                                 augmentations_dic = dic,
@@ -88,18 +87,16 @@ def test_tf_record(device):
 
             while not coord.should_stop():
 
-                np_img = sess.run(images)
-                # print np.shape(image)
-                # print np.shape(norm_img)
-                # print norm_img
+                np_orig_img, np_img, np_ang = sess.run([original_images, images, angles])
+                
+                print np_ang
+                np_orig_img = np_orig_img / 255.0
+                np_img = np_img / 255.0
 
-                print np_img
-                plt.imshow(np.squeeze(np_img))
+                f, (ax1, ax2) = plt.subplots(1, 2)
+                ax1.imshow(np.squeeze(np_orig_img))
+                ax2.imshow(np.squeeze(np_img), cmap='gray')
                 plt.show()
-                # f, (ax1, ax2) = plt.subplots(1, 2)
-                # ax1.imshow(np.squeeze(image), cmap='gray')
-                # ax2.imshow(np.squeeze(warp_iamge), cmap='gray')
-                # plt.show()
 
         except tf.errors.OutOfRangeError:
             print 'Done'
@@ -110,4 +107,4 @@ def test_tf_record(device):
 
 
 if __name__ == '__main__':
-    test_tf_record(5)
+    test_tf_record(0)

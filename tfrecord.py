@@ -36,16 +36,14 @@ def _float_feature(value):
 
 def draw_grid(img, grid_size):
   
-  shape = img.shape
-  for i in range(0, shape[1], grid_size):
-    cv2.line(img, (i, 0), (i, shape[0]), color=(255,255,255),thickness=2)
-  for j in range(0, shape[0], grid_size):
-    cv2.line(img, (0, j), (shape[1], j), color=(255,255,255),thickness=2)
-     
+  for i in range(0, np.shape(img)[1], grid_size):
+    cv2.line(img, (i, 0), (i, np.shape(img)[0]), color=(0,0,0),thickness=2)
+  for j in range(0, np.shape(img)[0], grid_size):
+    cv2.line(img, (0, j), (np.shape(img)[1], j), color=(0,0,0),thickness=2)
+  
   return img
 
 def normalize(image):
-
   # image_rgb_scaled = image_rgb * 255.0
   # red, green, blue = tf.split(num_or_size_splits=3, axis=3, value=image_rgb_scaled)
   # assert red.get_shape().as_list()[1:] == [224, 224, 1]
@@ -93,10 +91,11 @@ def vgg_preprocessing(image_rgb):
 def encode(img_path, target_label):
 
   img = np.array(Image.open(img_path))
-  img = img[:,:,:3] # removing img fourth dimension if it exists
+  img = img[:,:,:3].astype(np.float32) # removing img fourth dimension if it exists
 
   # img = draw_grid(img, 50)
-  img_raw = img.tostring()
+
+  img_raw = img.astype(np.uint8).tostring()
   path_raw = img_path.encode('utf-8')
 
   example = tf.train.Example(features=tf.train.Features(feature={
@@ -201,7 +200,6 @@ def create_tf_record(tfrecords_filename, file_pointers, target_labels):
   print 'Generated tfrecord at %s' % tfrecords_filename
   print '-' * 100
 
-
 def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,256], model_dims=[224,224,3], size_of_batch=32,\
                     augmentations_dic=None, num_of_threads=1, shuffle=True):
 
@@ -232,7 +230,6 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
   else:
     image = tf.image.resize_image_with_crop_or_pad(image, model_dims[0],\
                                                    model_dims[1])
-
   if augmentations_dic['rand_flip_left_right']:
     image = tf.image.random_flip_left_right(image)
 
@@ -240,10 +237,9 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
     image = tf.image.random_flip_up_down(image)
 
   if augmentations_dic['rand_rotate']:
-    elems = tf.convert_to_tensor(np.deg2rad(np.array(range(360))))
-    # sample = tf.squeeze(tf.multinomial(tf.log([ 1.0/np.repeat(360, 360)]), 1)) 
-    rand_index = tf.random_uniform(1, minval=0, maxval=359, dtype=tf.int32)
-    random_angle = elems[rand_index]
+    elems = tf.cast(tf.convert_to_tensor(np.deg2rad(np.array(range(360)))), dtype=tf.float32)
+    sample = tf.squeeze(tf.multinomial(tf.log([ (1.0/np.repeat(360, 360)).tolist()]), 1)) 
+    random_angle = elems[tf.cast(sample, tf.int32)]
     image = tf.contrib.image.rotate(image, random_angle)  
 
   if shuffle:
@@ -255,24 +251,24 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
   else:
     img, t_l, f_p = tf.train.batch([image, target_label, file_path],
                                          batch_size=size_of_batch,
-                                         capacity=20000,
+                                         capacity=5000,
                                          allow_smaller_final_batch=True,
                                          num_threads=num_of_threads)
 
   if augmentations_dic['warp']:
+
+    mean = 0.0
+    sigma = 1.0
+    alpha = 6.0
+    ksize = 128
+
     X = tf.random_uniform([model_dims[0], model_dims[1]])*2 - 1
     Y = tf.random_uniform([model_dims[0], model_dims[1]])*2 - 1
     X = tf.reshape(X, [1, model_dims[0],model_dims[1], 1])
     Y = tf.reshape(Y, [1, model_dims[0],model_dims[1], 1])
 
-    mean = 0.0
-    sigma = 1.0
-    alpha = 10.0
-    ksize = 128
-
     x = tf.linspace(-3.0, 3.0, ksize)
     z = ((1.0 / (sigma * tf.sqrt(2.0 * PI))) * tf.exp(tf.negative(tf.pow(x - mean, 2.0) / (2.0 * tf.pow(sigma, 2.0)))))
-    ksize = z.get_shape().as_list()[0]
     z_2d = tf.matmul(tf.reshape(z, [ksize, 1]), tf.reshape(z, [1, ksize]))
     z_4d = tf.reshape(z_2d, [ksize, ksize, 1, 1])
 
@@ -296,6 +292,6 @@ def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,25
     img = tf.image.rgb_to_grayscale(img)
 
   
-  return img, t_l, f_p
+  return  img, t_l, f_p
 
 

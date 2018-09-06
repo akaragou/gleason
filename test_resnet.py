@@ -139,8 +139,9 @@ def test_resnet(device, num_classes, num_layers, dataset, normalization, checkpo
          
         except tf.errors.OutOfRangeError:
             print "{0} accuracy: {1:.2f}".format(dataset, (metrics.accuracy_score(all_labels, all_predictions_target)*100))
-            # print "{0} precision: {1:.2f}".format(dataset, (metrics.precision_score(all_labels, all_predictions_target)*100))
-            # print "{0} recall: {1:.2f}".format(dataset, (metrics.recall_score(all_labels, all_predictions_target)*100))
+            if int(num_classes) == 2:
+                print "{0} precision: {1:.2f}".format(dataset, (metrics.precision_score(all_labels, all_predictions_target)*100))
+                print "{0} recall: {1:.2f}".format(dataset, (metrics.recall_score(all_labels, all_predictions_target)*100))
             print 
         finally:
             coord.request_stop()  

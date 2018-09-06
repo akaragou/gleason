@@ -107,19 +107,16 @@ def train_resnet(device, num_classes, num_layers, normalization):
                 if normalization == "standard":
                     train_img = normalize(train_img)
                 elif normalization == "unet":
-                    print train_img
-                    train_img, _ = unet_preprocess.unet(train_img,
-                                                     is_training = True,
-                                                     is_batch_norm = True,
-                                                     scope=resnet_scope,
-                                                     num_channels = 1)
-                    print train_img
+                    with slim.arg_scope(unet_preprocess.unet_arg_scope(weight_decay = config.l2_reg)):
+                        train_img, _ = unet_preprocess.unet(train_img,
+                                                         is_training = True,
+                                                         is_batch_norm = config.preprocess_batchnorm,
+                                                         num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
                 with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
                     train_target_logits, _ = resnet_v2.resnet_v2_50(inputs = train_img,                                                               
-                                                                    num_classes = config.output_shape,
-                                                                    scope = resnet_scope,
+                                                                    num_classes = config.output_shape,                                    
                                                                     is_training = True)
             # print_model_variables()
             resnet_scope.reuse_variables() # training variables are reused in validation graph 
@@ -128,17 +125,16 @@ def train_resnet(device, num_classes, num_layers, normalization):
                 if normalization == "standard":
                     val_img = normalize(val_img)
                 elif normalization == "unet":
-                    val_img,_ = unet_preprocess.unet(val_img,
-                                                   is_training = False,
-                                                   is_batch_norm = True,
-                                                   scope=resnet_scope,
-                                                   num_channels = 1)
+                    with slim.arg_scope(unet_preprocess.unet_arg_scope(weight_decay = config.l2_reg)):
+                        val_img,_ = unet_preprocess.unet(val_img,
+                                                       is_training = False,
+                                                       is_batch_norm = config.preprocess_batchnorm,
+                                                       num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
                 with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
                     val_target_logits, _ = resnet_v2.resnet_v2_50(inputs = val_img,
                                                                   num_classes = config.output_shape, 
-                                                                  scope = resnet_scope,
                                                                   is_training=False)
     elif num_layers == "101":
         print "Loading Resnet 101..."
@@ -148,17 +144,16 @@ def train_resnet(device, num_classes, num_layers, normalization):
                 if normalization == "standard":
                     train_img = normalize(train_img)
                 elif normalization == "unet":
-                    train_img, _ = unet_preprocess.unet(train_img,
-                                                     is_training = True,
-                                                     is_batch_norm = True,
-                                                     scope = resnet_scope,
-                                                     num_channels = 1)
+                    with slim.arg_scope(unet_preprocess.unet_arg_scope(weight_decay = config.l2_reg)):
+                        train_img, _ = unet_preprocess.unet(train_img,
+                                                         is_training = True,
+                                                         is_batch_norm = config.preprocess_batchnorm,                          
+                                                         num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
                 with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
                     train_target_logits, _ = resnet_v2.resnet_v2_101(inputs = train_img,
                                                                      num_classes = config.output_shape, 
-                                                                     scope = resnet_scope,
                                                                      is_training = True)
             # print_model_variables()
             resnet_scope.reuse_variables() # training variables are reused in validation graph 
@@ -167,17 +162,16 @@ def train_resnet(device, num_classes, num_layers, normalization):
                 if normalization == "standard":
                     val_img = normalize(val_img)
                 elif normalization == "unet":
-                    val_img,_ = unet_preprocess.unet(val_img,
-                                                   is_training = False,
-                                                   is_batch_norm = True,
-                                                   scope = resnet_scope,
-                                                   num_channels = 1)
+                    with slim.arg_scope(unet_preprocess.unet_arg_scope(weight_decay = config.l2_reg)):
+                        val_img,_ = unet_preprocess.unet(val_img,
+                                                       is_training = False,
+                                                       is_batch_norm = config.preprocess_batchnorm,
+                                                       num_channels = 1)
                 else:
                     raise Exception('Not known normalization! Options are: standard and unet.')
                 with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay = config.l2_reg)):
                     val_target_logits, _ = resnet_v2.resnet_v2_101(inputs = val_img, 
                                                                    num_classes = config.output_shape,
-                                                                   scope = resnet_scope,
                                                                    is_training = False)
 
     
@@ -289,7 +283,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                     
                     val_acc_total = it_val_acc.mean()
                     # Summaries
-                    summary_str= sess.run(summary_op)
+                    summary_str = sess.run(summary_op)
                     summary_writer.add_summary(summary_str, step_count)
 
                     # Training status and validation accuracy
@@ -300,6 +294,7 @@ def train_resnet(device, num_classes, num_layers, normalization):
                           datetime.datetime.now(), step_count, loss_value,
                           (config.train_batch_size / duration), float(duration),
                           train_acc, val_acc_total, summary_dir)
+                    print "Learning rate:", lr_value
                     # Save the model checkpoint if it's the best yet
                     if val_acc_total >= val_acc_max:
                         file_name = 'resnet_{0}_{1}'.format(dt_stamp, step_count)
