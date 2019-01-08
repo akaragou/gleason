@@ -3,6 +3,15 @@ import tensorflow as tf
 slim = tf.contrib.slim 
 
 def conv_bn_relu(net, num_features, is_training, is_batch_norm, scope_name):
+    """
+    Convolution, batchnorm and relu
+    Inputs: net - convolutional layer
+            num_features - num of channel features
+            is_training - boolean whether the model is in training or validation model
+            is_batch_norm - boolean whether to include batchnorm or not
+            scope_name - name of scope 
+    Output: net - convolutional layer with option to have batchnorm applied
+    """
     net = slim.conv2d(net, num_features, [3,3], activation_fn=None, normalizer_fn=None, scope=scope_name)
     if is_batch_norm:
         net = slim.batch_norm(net, is_training=is_training, decay=0.997, 
@@ -14,7 +23,7 @@ def conv_bn_relu(net, num_features, is_training, is_batch_norm, scope_name):
 def unet_arg_scope(weight_decay=0.0005):
   """Defines the Unet arg scope.
     Input: weight_decay - The l2 regularization coefficient
-    Output: arg_scope - argument scope of model
+    Output: arg_sc - argument scope of model
     """
   with slim.arg_scope([slim.conv2d],
                       padding='SAME',
@@ -28,8 +37,15 @@ def unet(inputs,
          is_batch_norm = True,
          num_channels = 3,
          scope='unet'):
-
-
+    """ Implementation of Unet 
+    Inputs: inputs - input image batch
+            is_training - boolean whether to train graph or validate/test
+            is_batch_norm - boolean option to include batchnorm
+            num_channels - number of channels in 
+            scope - scope name for model
+    Outputs: output_map - output logits
+             end_points - output dic
+    """
     with tf.variable_scope(scope, 'unet', [inputs]) as sc:
         end_points_collection = sc.name + '_end_points'
         # Collect outputs for conv2d, and max_pool2d.
@@ -95,90 +111,4 @@ def unet(inputs,
             end_points = slim.utils.convert_collection_to_dict(end_points_collection)
            
             return output_map, end_points
-
-
-# def unet(inputs,
-#          is_training = True,
-#          is_batch_norm = True,
-#          num_channels = 3,
-#          scope='unet'):
-
-
-#     with tf.variable_scope(scope, 'unet', [inputs]) as sc:
-#         end_points_collection = sc.name + '_end_points'
-#         # Collect outputs for conv2d, and max_pool2d.
-#         with slim.arg_scope([slim.conv2d,slim.conv2d_transpose, slim.max_pool2d],
-#                             outputs_collections=end_points_collection):
-
-#             ######################
-#             # downsampling  path #
-#             ######################
-#             conv1_1 = conv_bn_relu(inputs, 16, is_training, is_batch_norm, scope_name='conv1/conv1_1')
-#             conv1_2 = conv_bn_relu(conv1_1, 16, is_training, is_batch_norm, scope_name='conv1/conv1_2')
-#             pool1 = slim.max_pool2d(conv1_2, [2, 2], scope='pool1')
-
-#             conv2_1 = conv_bn_relu(pool1, 32, is_training, is_batch_norm, scope_name='conv2/conv2_1')
-#             conv2_2 = conv_bn_relu(conv2_1, 32, is_training, is_batch_norm, scope_name='conv2/conv2_2')
-#             pool2 = slim.max_pool2d(conv2_2, [2, 2], scope='pool2')
-
-#             conv3_1 = conv_bn_relu(pool2, 64, is_training, is_batch_norm, scope_name='conv3/conv3_1')
-#             conv3_2 = conv_bn_relu(conv3_1, 64, is_training, is_batch_norm, scope_name='conv3/conv3_2')
-#             pool3 = slim.max_pool2d(conv3_2, [2, 2], scope='pool3')
-
-#             conv4_1 = conv_bn_relu(pool3, 128, is_training, is_batch_norm, scope_name='conv4/conv4_1')
-#             conv4_2 = conv_bn_relu(conv4_1, 128, is_training, is_batch_norm, scope_name='conv4/conv4_2')
-#             pool4 = slim.max_pool2d(conv4_2, [2, 2], scope='pool4')
-
-#             ##############
-#             # bottleneck #
-#             ##############
-#             conv5_1 = conv_bn_relu(pool4, 256, is_training, is_batch_norm, scope_name='conv5/conv5_1')
-#             conv5_2 = conv_bn_relu(conv5_1, 256, is_training, is_batch_norm, scope_name='conv5/conv5_2')
-
-#             ###################
-#             # upsampling path #
-#             ###################
-#             conv6_1 = slim.conv2d_transpose(conv5_2, 256, [2,2], activation_fn=None, stride=2, scope='conv6/transpose_conv6_1')
-#             merge_1 = tf.concat([conv6_1, conv4_2], axis=-1, name='merge1') 
-#             conv6_2 = conv_bn_relu(merge_1, 128, is_training, is_batch_norm, scope_name='conv6/conv6_2')
-#             conv6_3 = conv_bn_relu(conv6_2, 128, is_training, is_batch_norm, scope_name='conv6/conv6_3')
-
-#             conv7_1 = slim.conv2d_transpose(conv6_3, 128, [2,2], activation_fn=None, stride=2, scope = 'conv7/transpose_conv7_1')
-#             merge_2 = tf.concat([conv7_1, conv3_2], axis=-1, name='merge2')
-#             conv7_2 = conv_bn_relu(merge_2, 64, is_training, is_batch_norm, scope_name='conv7/conv7_2')
-#             conv7_3 = conv_bn_relu(conv7_2, 64, is_training, is_batch_norm, scope_name='conv7/conv7_3')
-
-#             conv8_1 = slim.conv2d_transpose(conv7_3, 64, [2,2], activation_fn=None, stride=2, scope = 'conv8/transpose_conv8_1')
-#             merge_3 = tf.concat([conv8_1, conv2_2], axis=-1, name='merge3') 
-#             conv8_2 = conv_bn_relu(merge_3, 32, is_training, is_batch_norm, scope_name='conv8/conv8_2')
-#             conv8_3 = conv_bn_relu(conv8_2, 32, is_training, is_batch_norm, scope_name='conv8/conv8_3')
-
-#             conv9_1 = slim.conv2d_transpose(conv8_3, 32, [2,2], activation_fn=None, stride=2, scope = 'conv9/transpose_conv9_1')
-#             merge_4 = tf.concat([conv9_1, conv1_2], axis=-1, name='merge4') 
-#             conv9_2 = conv_bn_relu(merge_4, 16, is_training, is_batch_norm, scope_name='conv9/conv9_2')
-#             conv9_3 = conv_bn_relu(conv9_2, 16, is_training, is_batch_norm, scope_name='conv9/conv9_3')
-
-#             ###############
-#             # outpput map #
-#             ###############
-#             output_map = slim.conv2d(conv9_3, num_channels, [3, 3], 
-#                                     activation_fn=None, normalizer_fn=None, 
-#                                     scope='output_layer')
-
-#             # Convert end_points_collection into a end_point dict.
-#             end_points = slim.utils.convert_collection_to_dict(end_points_collection)
-           
-#             return output_map, end_points
-
-
-
-
-
-
-
-
-
-
-
-
-
+            

@@ -15,11 +15,6 @@ class GleasonConfig():
         self.val_fn =  os.path.join(self.main_dir, 'tfrecords/val.tfrecords')
         self.test_fn =  os.path.join(self.main_dir, 'tfrecords/test.tfrecords')
 
-        self.exp_fn =  os.path.join(self.main_dir, 'tfrecords/exp.tfrecords')
-
-        self.features = os.path.join(self.main_dir, 'features')
-        self.embedding = os.path.join(self.main_dir, 'embedding')
-
         self.restore = False
         self.optimizer = "nestrov"
         self.l2_reg = 0.001

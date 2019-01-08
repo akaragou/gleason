@@ -13,6 +13,11 @@ from resnet_config import GleasonConfig
 from tfrecord import vgg_preprocessing, tfrecord2metafilename, read_and_decode, normalize
 
 def print_model_variables():
+    """
+    Prints tensorflow slim model variables
+    Input: None
+    Output: None
+    """
     print "Model Variables:"
     for var in slim.get_model_variables():
         print var 
@@ -20,7 +25,10 @@ def print_model_variables():
 def train_resnet(device, num_classes, num_layers, normalization):
     """
     Loads training and validations tf records and trains resnet model and validates every number of fixed steps.
-    Input: gpu device number 
+    Input: device - input gpu device
+           num_classes - number of output classes
+           num_layers - number of ResNet layers
+           normalization - type of normalization to use, options include standard z-score and unet normalization
     Output None
     """
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device) # use nvidia-smi to see available options '0' means first gpu

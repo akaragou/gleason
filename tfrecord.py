@@ -34,28 +34,12 @@ def _int64_feature(value):
 def _float_feature(value):
   return tf.train.Feature(float_list = tf.train.FloatList(value=[value]))
 
-def draw_grid(img, grid_size):
-  
-  for i in range(0, np.shape(img)[1], grid_size):
-    cv2.line(img, (i, 0), (i, np.shape(img)[0]), color=(0,0,0),thickness=2)
-  for j in range(0, np.shape(img)[0], grid_size):
-    cv2.line(img, (0, j), (np.shape(img)[1], j), color=(0,0,0),thickness=2)
-  
-  return img
-
 def normalize(image):
-  # image_rgb_scaled = image_rgb * 255.0
-  # red, green, blue = tf.split(num_or_size_splits=3, axis=3, value=image_rgb_scaled)
-  # assert red.get_shape().as_list()[1:] == [224, 224, 1]
-  # assert green.get_shape().as_list()[1:] == [224, 224, 1]
-  # assert blue.get_shape().as_list()[1:] == [224, 224, 1]
-  # image_bgr = tf.concat(values = [
-  #     (blue - GLEASON_MEAN[0]) / GLEASON_STD[0],
-  #     (green - GLEASON_MEAN[1]) / GLEASON_STD[1],
-  #     (red - GLEASON_MEAN[2]) / GLEASON_STD[2]
-  #     ], axis=3)
-  # assert image_bgr.get_shape().as_list()[1:] == [224, 224, 3], image_bgr.get_shape().as_list()
-  # return image_bgr
+  """
+  Applys z-score normalization to input image
+  Input: image - batch of images
+  Output: image_scaled - batch of images with zscore normalization applied
+  """
   image_scaled = (image - GLEASON_MEAN_G) / GLEASON_MEAN_STD_G
   return image_scaled
 
@@ -72,7 +56,7 @@ def vgg_preprocessing(image_rgb):
   """
   Preprocssing the given image for evalutaiton with vgg16 model 
   Input: image_rgb - A tensor representing an image of size [224, 224, 3]
-  Output: A processed image 
+  Output: image_bgr - A processed BGR image of size [224, 224, 3]
   """
 
   image_rgb_scaled = image_rgb * 255.0
@@ -89,11 +73,14 @@ def vgg_preprocessing(image_rgb):
   return image_bgr
 
 def encode(img_path, target_label):
-
+  """
+  Encode tfrecord for img, path, label and bone type 
+  Inputs: img_path - filepath to img
+          target_label - label for img
+  Outputs: encoded tfrecord
+  """
   img = np.array(Image.open(img_path))
-  img = img[:,:,:3].astype(np.float32) # removing img fourth dimension if it exists
-
-  # img = draw_grid(img, 50)
+  img = img[:,:,:3].astype(np.float32) 
 
   img_raw = img.astype(np.uint8).tostring()
   path_raw = img_path.encode('utf-8')
@@ -158,6 +145,12 @@ def distort_color(image, color_ordering=0, fast_mode=False, scope=None):
     return tf.clip_by_value(image, 0.0, 1.0)
 
 def distort_brightness_constrast(image, ordering=0):
+  """
+  Apply brightness contrast distortion to images
+  Inputs: image - input image
+          ordering - ordering whether to apply brightness augmentation or contrast augementation first
+  Outputs: None
+  """
   if ordering == 0:
     image = tf.image.random_brightness(image, max_delta=32. / 255.)
     image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
@@ -167,7 +160,13 @@ def distort_brightness_constrast(image, ordering=0):
   return tf.clip_by_value(image, 0.0, 1.0)
 
 def create_tf_record(tfrecords_filename, file_pointers, target_labels):
-    
+  """
+  Creates tfrecords using mutiple processes
+  Inputs: tfrecords_filename - tfrecord filepath
+          file_pointers - array of paths to image files
+          target_labels - array of paths to image labels
+  Otputs: None
+  """
   writer = tf.python_io.TFRecordWriter(tfrecords_filename)
 
   print '%d files in %d categories' % (len(np.unique(file_pointers)), len(np.unique(target_labels)))
@@ -200,9 +199,22 @@ def create_tf_record(tfrecords_filename, file_pointers, target_labels):
   print 'Generated tfrecord at %s' % tfrecords_filename
   print '-' * 100
 
-def read_and_decode(filename_queue=None, img_dims=[256,256,3], resize_to=[256,256], model_dims=[224,224,3], size_of_batch=32,\
+def read_and_decode(filename_queue=None, img_dims=[256,256,3], model_dims=[224,224,3], size_of_batch=32,\
                     augmentations_dic=None, num_of_threads=1, shuffle=True):
-
+  """
+  Reads, decodes and applys augmentations to batch of images
+  Inputs: filename_queue - Input queue for either train, val or test tfrecords 
+          img_dims - dimensions of input image
+          model_dims - output dimensions for model
+          size_of_batch - size of batch of images 
+          augmentations_dic - dictionary with selected augmentations
+          num_of_threads - number of threads selected
+          shuffle - option to shuffle batch
+  Outputs: img - batch of images
+           t_l - batch of target labels
+           b_t - batch of bone types
+           f_p - batch of filepointers
+  """
   reader = tf.TFRecordReader()
 
   _, serialized_example = reader.read(filename_queue)

@@ -19,12 +19,17 @@ import math
 def test_resnet(device, num_classes, num_layers, dataset, normalization, checkpoint):
     """
     Computes accuracy for the test dataset
-    Input: gpu device 
+    Inputs: device - gpu device
+            num_classes - number of output classes 
+            num_layers - number of layers selected for ResNet 
+            dataset - dataset selected, options are val and test
+            normalization - normalization used options are standard z-score normalization or unet normalization
+            checkpoint - file where graph model weights are stored
     Output: None
     """
     print dataset
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device) # use nvidia-smi to see available options '0' means first gpu
-    config = GleasonConfig() # loads pathology configuration defined in vgg_config
+    config = GleasonConfig() # loads pathology configuration 
 
     if dataset == 'val':  
         print "Using val..." 

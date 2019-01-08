@@ -12,61 +12,12 @@ from itertools import repeat
 from tqdm import tqdm 
 import random
 
-def compute_mean(file):
-    rgb_img = misc.imread(file, mode='RGB')
-    r_mean = np.mean(rgb_img[:,:,0])
-    b_mean = np.mean(rgb_img[:,:,1])
-    g_mean = np.mean(rgb_img[:,:,2])
-
-    return (r_mean, b_mean, g_mean)
-
-def compute_mean_grey(file):
-
-    img = misc.imread(file, mode='L')
-    img_mean = np.mean(img)
-
-    return img_mean
-
-
-def calculate_img_stats(main_data_dir, dataset):
-
-    files = glob.glob(os.path.join(main_data_dir, dataset) + '/*.png')
-    R_means = []
-    G_means = []
-    B_means = []
-
-    grey_mean = []
-
-    with ProcessPoolExecutor(32) as executor:
-        futures = [executor.submit(compute_mean_grey, f) for f in files]
-        kwargs = {
-              'total': len(futures),
-              'unit': 'it',
-              'unit_scale': True,
-              'leave': True
-        }
-
-        for f in tqdm(as_completed(futures), **kwargs):
-            pass
-        print "Done loading futures!"
-        for i in tqdm(range(len(futures))):
-            try:
-                example = futures[i].result()
-                grey_mean.append(example)
-                # R_means.append(example[0])
-                # G_means.append(example[1])
-                # B_means.append(example[2])
-            except Exception as e:
-                print "Failed to compute means"
-
-    print "grey mean: {0} || grey std: {1}".format(np.mean(grey_mean), np.std(grey_mean))
-
-    # print "R mean: {0} || R std: {1}".format(np.mean(R_means), np.std(R_means))
-    # print "G mean: {0} || G std: {1}".format(np.mean(G_means), np.std(G_means))
-    # print "B mean: {0} || B std: {1}".format(np.mean(B_means), np.std(B_means))
-
 def calculate_class_ratios(main_data_dir, dataset):
-
+    """
+    Calculate class and save weights for different Gleason gradings
+    Inputs: main_data_dir - main directory for project
+            dataset - dataset selected, options are train, val and test
+    """
     files = glob.glob(os.path.join(main_data_dir, dataset) + '/*.png')
 
     targe_label_dic = {0:0 ,1:0, 2:0, 3:0}
@@ -92,12 +43,14 @@ def calculate_class_ratios(main_data_dir, dataset):
     print "class weights:", class_weights
     np.save(dataset + '_class_weights.npy', class_weights)
 
-def calculate_mean_std(main_data_dir, dataset):
-    pass
-
 
 def build_tfrecords(main_data_dir, main_tfrecords_dir, dataset):
-    
+    """
+    creating tfrecords for image patches
+    Inputs: main_data_dir - main directory for project
+            main_tfrecords_dir - main directory to store tfrecords in
+            dataset - dataset selected, options are train, val and test
+    """
     files = glob.glob(os.path.join(main_data_dir, dataset) + '/*.png')
     
     target_labels = [] 
@@ -122,14 +75,6 @@ if __name__ == '__main__':
     main_data_dir = '/media/data_cifs/andreas/pathology/gleason_training_patches/'
     main_tfrecords_dir = '/media/data_cifs/andreas/pathology/gleason_training_patches/tfrecords'
 
-    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'train')
-    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'val')
-    # build_tfrecords(main_data_dir, main_tfrecords_dir, 'test')
-
-    # calculate_class_ratios(main_data_dir, 'train')
-    # calculate_img_stats(main_data_dir, 'train')
-
-    build_tfrecords(main_data_dir, main_tfrecords_dir, 'exp')
-
-
-
+    build_tfrecords(main_data_dir, main_tfrecords_dir, 'train')
+    build_tfrecords(main_data_dir, main_tfrecords_dir, 'val')
+    build_tfrecords(main_data_dir, main_tfrecords_dir, 'test')
