@@ -1,6 +1,7 @@
 # Gleason
 
-Training ResNet models for grading image patches of prostate cancer
+Training ResNet models for grading image patches of prostate cancer.
+
 ---
 ![plot](https://user-images.githubusercontent.com/16754088/50859189-ad7dc600-1360-11e9-9ee6-bbc37649d107.png)
 ---
