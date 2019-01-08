@@ -1,9 +1,11 @@
 # Gleason
+
+Training ResNet models for grading image patches of prostate cancer
 ---
 ![plot](https://user-images.githubusercontent.com/16754088/50859189-ad7dc600-1360-11e9-9ee6-bbc37649d107.png)
 ---
-- create\_crops\_normal.py - creates normal crops from patholog svs slide files
-- create\_crops\_tumor.py	- creates malginant crops from patholog svs slide files
+- create\_crops\_normal.py - creates normal image patch from pathology svs slide files
+- create\_crops\_tumor.py	- creates malginant image patch from pathology svs slide files
 - create\_prostate\_normal.sh	- bash script with normal slides to process
 - create\_prostate\_tumor.sh	- bash script with malignant slides to process
 - prepare_tfrecords.py - script to encode image data into tfrecord format
